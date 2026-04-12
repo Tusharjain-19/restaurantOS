@@ -91,7 +91,7 @@ To get a local development environment up and running smoothly, follow these ste
 
 ## 🔐 Security & Privacy Architecture
 
-By default, all sensitive transactional data—such as sequential daily revenue, staff role definitions, customer order histories, and proprietary items—are stored strictly on the terminal's **Local IndexedDB**. Continuous Sequence Generative logic perfectly isolates tokens, clearing sequence boundaries accurately every day at `12:00 AM`.
+By default, all sensitive transactional data such as sequential daily revenue, staff role definitions, customer order histories, and proprietary items are stored strictly on the terminal's **Local IndexedDB**. Continuous Sequence Generative logic perfectly isolates tokens, clearing sequence boundaries accurately every day at `12:00 AM`.
 
 <br />
 
