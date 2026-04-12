@@ -108,6 +108,22 @@ This project is actively maintained and designed under extreme precision to revo
   - [GitHub Profile](https://github.com/Niranjan-png)
 
 ---
+
+## 🚫 License & Usage Restrictions
+
+**Copyright (c) 2024-2026 Tushar Jain. All Rights Reserved.**
+
+This software is provided for **educational and personal portfolio purposes only**. Strict restrictions apply to its use:
+
+1. **No Commercial Use**: You are strictly prohibited from using this software, its source code, or its design assets for any commercial purpose, including but not limited to selling it as a product, using it in a commercial establishment, or offering it as a service (SaaS) without explicit written permission from Tushar Jain.
+2. **No Redistribution**: You may not redistribute, sub-license, or lease this software in its original or modified form to any third party.
+3. **Internal Use Only**: Any modifications made to the code must remain for personal use and cannot be shared publicly or commercially without attribution and permission.
+4. **No Warranty**: This software is provided "as is," without warranty of any kind, express or implied. The author shall not be held liable for any damages arising from the use of this software.
+
+**For licensing inquiries or commercial permissions, please contact:** [tusharjain.in](https://tusharjain.in)
+
+---
+
 <div align="center">
   <i>Developed proudly by Tushar Jain</i>
 </div>
