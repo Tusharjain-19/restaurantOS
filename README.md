@@ -39,6 +39,26 @@ RestaurantOS is a modern, ultra-fast, offline-first Point of Sale (POS) and Rest
 - **State & Database**: Dexie.js (IndexedDB wrapper for instantaneous persistent browser local storage)
 - **Iconography System**: Lucide React 
 
+## 💰 Pricing & Distribution Model
+
+RestaurantOS is designed for direct white-label distribution. Below is the recommended pricing structure for restaurant owners:
+
+| Plan | Pricing | Features |
+| :--- | :--- | :--- |
+| **7-Day Free Trial** | ₹0 | Full feature access to test operations and thermal printing compatibility. |
+| **Monthly Subscription** | ₹1,299/mo | All features + Support. Ideal for seasonal or new businesses. |
+| **Yearly Subscription** | ₹11,999/yr | **Best Value**. Includes 25% discount and priority remote support. |
+| **Lifetime License** | ₹24,999 | One-time buyout for permanent offline use + minor updates. |
+| **Annual Renewal (AMC)**| ₹4,999/yr | For technical maintenance, security updates, and cloud sync. |
+
+## 📑 Advanced Invoice Designer
+
+The system features a Canva-inspired **Invoice Designer** that allows owners to:
+- **Dynamic Content**: Edit headers, footers, and legal declarations.
+- **Visual Control**: Toggle logo visibility, font weights, and text alignment.
+- **Thermal Optimization**: Real-time previews for 80mm and 57mm paper rolls.
+- **Legal Compliance**: Add GSTIN, FSSAI licenses, and custom terms & conditions directly.
+
 ## 🚀 Getting Started
 
 To get a local development environment up and running smoothly, follow these steps:

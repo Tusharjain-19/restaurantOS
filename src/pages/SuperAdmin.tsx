@@ -18,6 +18,10 @@ interface License {
   is_active: boolean;
   expires_at: string;
   created_at: string;
+  client_email?: string;
+  client_mobile?: string;
+  account_details?: string;
+  subscription_plan?: string;
 }
 
 export default function SuperAdmin() {
@@ -31,7 +35,11 @@ export default function SuperAdmin() {
     restaurant_name: '',
     admin_username: 'Admin',
     admin_password: 'admin123',
-    validity_months: 12
+    validity_months: 12,
+    client_email: '',
+    client_mobile: '',
+    account_details: '',
+    subscription_plan: 'Yearly'
   });
 
   const checkDbSetup = async () => {
@@ -98,6 +106,10 @@ export default function SuperAdmin() {
       restaurant_name: formData.restaurant_name,
       admin_username: formData.admin_username,
       admin_password: formData.admin_password,
+      client_email: formData.client_email,
+      client_mobile: formData.client_mobile,
+      account_details: formData.account_details,
+      subscription_plan: formData.subscription_plan,
       is_active: true,
       expires_at: expiry.toISOString()
     }]);
@@ -107,7 +119,16 @@ export default function SuperAdmin() {
     } else {
       toast.success('License generated successfully!');
       setShowAdd(false);
-      setFormData({ restaurant_name: '', admin_username: 'Admin', admin_password: 'admin123', validity_months: 12 });
+      setFormData({ 
+        restaurant_name: '', 
+        admin_username: 'Admin', 
+        admin_password: 'admin123', 
+        validity_months: 12,
+        client_email: '',
+        client_mobile: '',
+        account_details: '',
+        subscription_plan: 'Yearly'
+      });
       fetchLicenses();
     }
     setLoading(false);
@@ -193,13 +214,36 @@ export default function SuperAdmin() {
           </div>
         </div>
 
-        {/* Database instruction banner */}
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
-          <div className="text-sm leading-relaxed">
-            <p className="font-bold mb-1">Supabase Database Setup Required</p>
-            <p>Ensure your Supabase project has a table named <code>licenses</code> with columns: <code>id</code> (uuid), <code>license_key</code> (text), <code>restaurant_name</code> (text), <code>admin_username</code> (text), <code>admin_password</code> (text), <code>is_active</code> (bool), <code>expires_at</code> (timestamptz).</p>
-          </div>
+        {/* Pricing Guide Card */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-none">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Monthly Plan</CardTitle></CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹1,299</div>
+              <p className="text-xs opacity-80 decoration-indigo-200">Billed monthly</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Yearly Plan</CardTitle></CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹11,999</div>
+              <p className="text-xs opacity-80">Save 25% yearly</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">One-Time Fee</CardTitle></CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹24,999</div>
+              <p className="text-xs opacity-80">Lifetime + Minor updates</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-none">
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Renewal / AMC</CardTitle></CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹4,999</div>
+              <p className="text-xs opacity-80">Annual support renewal</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Licenses Grid */}
@@ -211,9 +255,12 @@ export default function SuperAdmin() {
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg font-bold">{lic.restaurant_name}</CardTitle>
-                    <Badge variant={lic.is_active && !isExpired ? 'default' : 'destructive'} className={lic.is_active && !isExpired ? 'bg-green-500' : ''}>
-                      {isExpired ? 'Expired' : lic.is_active ? 'Active' : 'Revoked'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge variant={lic.is_active && !isExpired ? 'default' : 'destructive'} className={lic.is_active && !isExpired ? 'bg-green-500' : ''}>
+                        {isExpired ? 'Expired' : lic.is_active ? 'Active' : 'Revoked'}
+                      </Badge>
+                      <span className="text-[10px] font-bold text-blue-600">{lic.subscription_plan || 'TRIAL'}</span>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -233,6 +280,21 @@ export default function SuperAdmin() {
                     <div>
                       <span className="text-gray-500 text-xs block">Admin Pass</span>
                       <span className="font-mono">{lic.admin_password}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px] bg-blue-50/50 border border-blue-100 rounded-md p-2">
+                    <div>
+                      <span className="text-gray-500 block">Client Phone</span>
+                      <span className="font-semibold">{lic.client_mobile || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Client Email</span>
+                      <span className="font-semibold break-all">{lic.client_email || '-'}</span>
+                    </div>
+                    <div className="col-span-2 border-t pt-1 mt-1">
+                      <span className="text-gray-500 block">Bank/Account Details</span>
+                      <span className="font-medium text-slate-700">{lic.account_details || 'N/A'}</span>
                     </div>
                   </div>
 
@@ -282,9 +344,38 @@ export default function SuperAdmin() {
                   <Input value={formData.admin_password} onChange={e => setFormData({...formData, admin_password: e.target.value})} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Client Email</Label>
+                  <Input type="email" value={formData.client_email} onChange={e => setFormData({...formData, client_email: e.target.value})} placeholder="owner@gmail.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Client Mobile</Label>
+                  <Input value={formData.client_mobile} onChange={e => setFormData({...formData, client_mobile: e.target.value})} placeholder="+91..." />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label>License Validity (Months)</Label>
-                <Input type="number" min="1" max="120" value={formData.validity_months} onChange={e => setFormData({...formData, validity_months: parseInt(e.target.value)})} />
+                <Label>Account Details (Bank/UPI)</Label>
+                <Input value={formData.account_details} onChange={e => setFormData({...formData, account_details: e.target.value})} placeholder="Bank A/C, IFSC, etc." />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Subscription Plan</Label>
+                  <select 
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={formData.subscription_plan} 
+                    onChange={e => setFormData({...formData, subscription_plan: e.target.value})}
+                  >
+                    <option value="Trial (7 Days)">Trial (7 Days)</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Yearly">Yearly</option>
+                    <option value="Lifetime">Lifetime</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Validity (Months)</Label>
+                  <Input type="number" min="1" max="120" value={formData.validity_months} onChange={e => setFormData({...formData, validity_months: parseInt(e.target.value)})} />
+                </div>
               </div>
               
               <div className="bg-amber-50 text-amber-800 p-3 rounded text-xs leading-relaxed border border-amber-200">
