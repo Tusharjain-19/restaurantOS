@@ -262,19 +262,12 @@ export default function SuperAdmin() {
         </div>
 
         {/* Pricing Guide Card */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-none shadow-lg">
-            <CardHeader className="pb-1 pt-4"><CardTitle className="text-xs uppercase tracking-wider opacity-80">Monthly Plan</CardTitle></CardHeader>
-            <CardContent className="pb-4">
-              <div className="text-2xl font-bold">₹1,299</div>
-              <p className="text-[10px] opacity-70">Billed every month</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none shadow-lg">
             <CardHeader className="pb-1 pt-4"><CardTitle className="text-xs uppercase tracking-wider opacity-80">Yearly Plan</CardTitle></CardHeader>
             <CardContent className="pb-4">
-              <div className="text-2xl font-bold">₹11,999</div>
-              <p className="text-[10px] opacity-70">Save 25% annually</p>
+              <div className="text-2xl font-bold">₹9,999</div>
+              <p className="text-[10px] opacity-70">Full professional access</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none shadow-lg">
@@ -285,10 +278,10 @@ export default function SuperAdmin() {
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-amber-500 to-primary text-white border-none shadow-lg">
-            <CardHeader className="pb-1 pt-4"><CardTitle className="text-xs uppercase tracking-wider opacity-80">Renewal / AMC</CardTitle></CardHeader>
+            <CardHeader className="pb-1 pt-4"><CardTitle className="text-xs uppercase tracking-wider opacity-80">Yearly Renewal (AMC)</CardTitle></CardHeader>
             <CardContent className="pb-4">
-              <div className="text-2xl font-bold">₹4,999</div>
-              <p className="text-[10px] opacity-70">Annual support renewal</p>
+              <div className="text-2xl font-bold">₹3,000</div>
+              <p className="text-[10px] opacity-70">Annual support & updates</p>
             </CardContent>
           </Card>
         </div>
@@ -417,7 +410,6 @@ export default function SuperAdmin() {
                     onChange={e => setFormData({...formData, subscription_plan: e.target.value})}
                   >
                     <option value="Trial (7 Days)">Trial (7 Days)</option>
-                    <option value="Monthly (Paid)">Monthly (Paid)</option>
                     <option value="Yearly (Paid)">Yearly (Paid)</option>
                     <option value="Lifetime (Paid)">Lifetime (Paid)</option>
                   </select>

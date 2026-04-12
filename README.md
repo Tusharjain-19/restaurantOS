@@ -46,10 +46,9 @@ RestaurantOS is designed for direct white-label distribution. Below is the recom
 | Plan | Pricing | Features |
 | :--- | :--- | :--- |
 | **7-Day Free Trial** | ₹0 | Full feature access to test operations and thermal printing compatibility. |
-| **Monthly Subscription** | ₹1,299/mo | All features + Support. Ideal for seasonal or new businesses. |
-| **Yearly Subscription** | ₹11,999/yr | **Best Value**. Includes 25% discount and priority remote support. |
+| **Yearly Subscription** | ₹9,999/yr | **Best Value**. Includes full professional access and priority remote support. |
 | **Lifetime License** | ₹24,999 | One-time buyout for permanent offline use + minor updates. |
-| **Annual Renewal (AMC)**| ₹4,999/yr | For technical maintenance, security updates, and cloud sync. |
+| **Yearly Renewal (AMC)**| ₹3,000/yr | Annual support, security maintenance, and software updates. |
 
 ## 📑 Advanced Invoice Designer
 

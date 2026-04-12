@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { db, type Bill } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cn } from '@/lib/utils';
+import { ThermalReceipt } from '@/components/pos/ThermalReceipt';
 
 export default function Billing() {
   const bills = useLiveQuery(() => db.bills.orderBy('created_at').reverse().toArray()) || [];
@@ -20,6 +21,7 @@ export default function Billing() {
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [viewBill, setViewBill] = useState<Bill | null>(null);
+  const [printingBill, setPrintingBill] = useState<Bill | null>(null);
 
   const filtered = bills.filter(b => {
     const matchesSearch = !search || b.bill_number.includes(search) || b.customer_name?.toLowerCase().includes(search.toLowerCase());
@@ -181,18 +183,27 @@ export default function Billing() {
               </div>
             </div>
           )}
-          <div className="flex gap-2">
-            <Button className="flex-1 gap-1" onClick={() => { window.print(); toast.success('Printing...'); }}>
-              <Printer className="h-4 w-4" /> Print Bill
+          <div className="flex gap-2 p-4 pt-0">
+            <Button className="flex-1 gap-1" onClick={() => { setPrintingBill(viewBill); setViewBill(null); }}>
+              <Printer className="h-4 w-4" /> Print Real Bill
             </Button>
             {viewBill?.status === 'paid' && (
-              <Button variant="destructive" className="gap-1" onClick={() => viewBill && voidBill(viewBill)}>
+              <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => viewBill && voidBill(viewBill)}>
                 <XCircle className="h-4 w-4" /> Void
               </Button>
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Professional Thermal Receipt Component */}
+      {printingBill && (
+        <ThermalReceipt 
+          bill={printingBill} 
+          restaurant={restaurant} 
+          onClose={() => setPrintingBill(null)} 
+        />
+      )}
     </div>
   );
 }

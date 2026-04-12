@@ -301,7 +301,10 @@ export default function POS() {
     setShowPayment(false);
 
     setPrintingBill(newBillData as Bill);
-    toast.success(`Bill ${billNumber} - ₹${Math.round(total)} paid via ${paymentMethod}`);
+    toast.success(`Bill ${billNumber} saved to History & Printing...`, {
+      description: `Amount: ₹${Math.round(total)} paid via ${paymentMethod}`,
+      duration: 5000
+    });
     
     // Load fresh token for next order
     loadToken();
