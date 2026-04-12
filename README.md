@@ -81,10 +81,12 @@ By default, all sensitive transactional data—such as sequential daily revenue,
 This project is actively maintained and designed under extreme precision to revolutionize the standard of Food & Beverage Management software.
 
 - **Tushar Jain** - *Lead Developer, Architect & UI/UX Designer* 
+  - [Portfolio (tusharjain.in)](https://tusharjain.in)
   - [GitHub Profile](https://github.com/Tusharjain-19)
 
 ### 🙌 Acknowledgements & Contributors
 - **Niranjan K** - *Contributor*
+  - [GitHub Profile](https://github.com/Niranjan-png)
 
 ---
 <div align="center">
