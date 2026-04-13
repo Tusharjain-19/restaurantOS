@@ -56,12 +56,30 @@ export default function POS() {
     const saved = localStorage.getItem('pos_table_carts');
     return saved ? JSON.parse(saved) : {};
   });
+  const [takeawayItems, setTakeawayItems] = useState<CartItem[]>(() => {
+    const saved = localStorage.getItem('pos_takeaway_items');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [deliveryItems, setDeliveryItems] = useState<CartItem[]>(() => {
+    const saved = localStorage.getItem('pos_delivery_items');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const handleTableClick = (tableId: number) => {
     if (selectedTable === tableId) return;
-    if (selectedTable) {
+    
+    // Save current items to appropriate draft
+    if (orderType === 'dine_in' && selectedTable) {
       setTableCarts(prev => ({ ...prev, [selectedTable]: orderItems }));
+    } else if (orderType === 'takeaway') {
+      setTakeawayItems(orderItems);
+    } else if (orderType === 'delivery') {
+      setDeliveryItems(orderItems);
     }
+
+    // Force Dine-In type when clicking a table
+    if (orderType !== 'dine_in') setOrderType('dine_in');
+    
     setSelectedTable(tableId);
     setOrderItems(tableCarts[tableId] || []);
   };
@@ -97,13 +115,25 @@ export default function POS() {
   }, [heldOrders]);
 
   useEffect(() => {
+    localStorage.setItem('pos_takeaway_items', JSON.stringify(takeawayItems));
+  }, [takeawayItems]);
+
+  useEffect(() => {
+    localStorage.setItem('pos_delivery_items', JSON.stringify(deliveryItems));
+  }, [deliveryItems]);
+
+  useEffect(() => {
     if (selectedTable) {
       setTableCarts(prev => {
         if (JSON.stringify(prev[selectedTable]) === JSON.stringify(orderItems)) return prev;
         return { ...prev, [selectedTable]: orderItems };
       });
+    } else if (orderType === 'takeaway') {
+      setTakeawayItems(orderItems);
+    } else if (orderType === 'delivery') {
+      setDeliveryItems(orderItems);
     }
-  }, [orderItems, selectedTable]);
+  }, [orderItems, selectedTable, orderType]);
 
   // Init selected floor
   useEffect(() => {
@@ -289,11 +319,18 @@ export default function POS() {
     // Clear order
     setOrderItems([]);
     setSelectedTable(null);
-    setTableCarts(prev => {
-      const next = { ...prev };
-      if (selectedTable) delete next[selectedTable];
-      return next;
-    });
+    if (selectedTable) {
+      setTableCarts(prev => {
+        const next = { ...prev };
+        delete next[selectedTable];
+        return next;
+      });
+    } else if (orderType === 'takeaway') {
+      setTakeawayItems([]);
+    } else if (orderType === 'delivery') {
+      setDeliveryItems([]);
+    }
+
     setCustomerName('');
     setCustomerPhone('');
     setDeliveryAddress('');
@@ -331,12 +368,32 @@ export default function POS() {
       {/* LEFT PANEL — Table/Order Selection */}
       <div className="w-[28%] min-w-[240px] border-r bg-card flex flex-col">
         <Tabs value={orderType} onValueChange={v => {
-          if (v !== 'dine_in' && selectedTable) {
+          const nextType = v as OrderType;
+          if (nextType === orderType) return;
+
+          // Save current state
+          if (orderType === 'dine_in' && selectedTable) {
             setTableCarts(prev => ({ ...prev, [selectedTable]: orderItems }));
-            setSelectedTable(null);
-            setOrderItems([]);
+          } else if (orderType === 'takeaway') {
+            setTakeawayItems(orderItems);
+          } else if (orderType === 'delivery') {
+            setDeliveryItems(orderItems);
           }
-          setOrderType(v as OrderType);
+
+          // Load new state
+          if (nextType === 'dine_in') {
+            // Wait for a table to be selected, or just clear
+            setOrderItems([]);
+            setSelectedTable(null);
+          } else if (nextType === 'takeaway') {
+            setSelectedTable(null);
+            setOrderItems(takeawayItems);
+          } else if (nextType === 'delivery') {
+            setSelectedTable(null);
+            setOrderItems(deliveryItems);
+          }
+          
+          setOrderType(nextType);
         }} className="p-2">
           <TabsList className="w-full grid grid-cols-3 h-9">
             <TabsTrigger value="dine_in" className="text-xs">Dine-In</TabsTrigger>

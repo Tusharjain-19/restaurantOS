@@ -1,13 +1,24 @@
 import { useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Grid3X3, ChefHat, Receipt,
-  Package, BarChart3, Users, Truck, Settings, UserCircle, CalendarDays, UtensilsCrossed
+  Package, BarChart3, Users, Truck, Settings, UserCircle, CalendarDays, UtensilsCrossed,
+  LogOut, ChevronsUpDown, User
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
+  SidebarFooter, SidebarHeader, SidebarSeparator
 } from '@/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { hasAccess } from '@/hooks/useAuth';
 
@@ -30,7 +41,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
-  const { role } = useAuth();
+  const { role, profile, signOut } = useAuth();
 
   const visibleItems = navItems.filter((item) => hasAccess(role, item.url));
 
@@ -68,6 +79,72 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
+                    <AvatarFallback className="rounded-lg bg-orange-100 text-orange-600 font-bold">
+                      {profile?.name?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!collapsed && (
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold">{profile?.name}</span>
+                      <span className="truncate text-xs text-muted-foreground capitalize">{profile?.role}</span>
+                    </div>
+                  )}
+                  {!collapsed && <ChevronsUpDown className="ml-auto size-4" />}
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                    <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
+                      <AvatarFallback className="rounded-lg bg-orange-100 text-orange-600 font-bold">
+                        {profile?.name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold">{profile?.name}</span>
+                      <span className="truncate text-xs text-muted-foreground capitalize">{profile?.role}</span>
+                    </div>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => window.location.href = '/settings'}>
+                  <User className="size-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => window.location.href = '/settings'}>
+                  <Settings className="size-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="gap-2 text-destructive focus:text-destructive cursor-pointer font-medium" 
+                  onClick={signOut}
+                >
+                  <LogOut className="size-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

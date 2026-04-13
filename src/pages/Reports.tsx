@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
+import { exportReportsToExcel } from '@/lib/export';
 
 const CHART_COLORS = ['hsl(215, 60%, 50%)', 'hsl(24, 90%, 50%)', 'hsl(150, 60%, 40%)', 'hsl(280, 60%, 55%)', 'hsl(45, 93%, 52%)', 'hsl(0, 70%, 50%)'];
 
@@ -82,17 +83,40 @@ export default function Reports() {
   const totalRevenue = paidOrders.reduce((s, o) => s + o.total, 0);
   const totalOrders = paidOrders.length;
 
-  const exportCSV = () => {
-    const header = 'Order#,Date,Type,Customer,Subtotal,Tax,Total,Payment,Status\n';
-    const rows = paidOrders.map(o =>
-      `${o.order_number},${new Date(o.created_at).toLocaleDateString()},${o.order_type},${o.customer_name || '-'},${o.subtotal},${o.tax_amount},${o.total},${o.payment_method},${o.status}`
-    ).join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `restaurant_report_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    toast.success('Report exported');
+  const exportXLSX = () => {
+    const reportsData = {
+      'Sales_Summary': paidOrders.map(o => ({
+        'Order Number': o.order_number,
+        'Date': new Date(o.created_at).toLocaleDateString(),
+        'Type': o.order_type,
+        'Customer': o.customer_name || 'Walk-in',
+        'Subtotal': o.subtotal,
+        'Tax': o.tax_amount,
+        'Total': o.total,
+        'Payment': o.payment_method,
+        'Status': o.status
+      })),
+      'Inventory_Status': ingredients.map(i => ({
+        'Item Name': i.name,
+        'Category': i.category,
+        'Current Stock': i.current_stock,
+        'Unit': i.unit,
+        'Min Level': i.min_level,
+        'Status': i.status,
+        'Value': i.current_stock * i.cost_per_unit
+      })),
+      'Wastage_Logs': wastageLogs.map(w => ({
+        'Item': w.item_name,
+        'Quantity': w.quantity,
+        'Unit': w.unit,
+        'Cost': w.cost,
+        'Reason': w.reason,
+        'Date': new Date(w.created_at).toLocaleDateString()
+      }))
+    };
+
+    exportReportsToExcel(reportsData, `restaurant_report_${new Date().toISOString().split('T')[0]}`);
+    toast.success('Excel Report exported');
   };
 
   return (
@@ -102,8 +126,8 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
           <p className="text-sm text-muted-foreground">Comprehensive business insights</p>
         </div>
-        <Button variant="outline" className="gap-1.5" onClick={exportCSV}>
-          <Download className="h-4 w-4" /> Export CSV
+        <Button variant="outline" className="gap-1.5" onClick={exportXLSX}>
+          <Download className="h-4 w-4" /> Export Excel
         </Button>
       </div>
 

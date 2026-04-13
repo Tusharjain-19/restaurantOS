@@ -534,133 +534,29 @@ export async function seedDatabase() {
   }
   await db.restaurantTables.bulkAdd(tableSeeds);
 
-  // Seed menu categories
+  // Seed menu categories (Basic structure)
   await db.menuCategories.bulkAdd([
-    { name: 'Starters', display_order: 0, is_active: true, item_count: 8 },
-    { name: 'Main Course', display_order: 1, is_active: true, item_count: 12 },
-    { name: 'Breads', display_order: 2, is_active: true, item_count: 6 },
-    { name: 'Rice & Biryani', display_order: 3, is_active: true, item_count: 5 },
-    { name: 'Beverages', display_order: 4, is_active: true, item_count: 8 },
-    { name: 'Desserts', display_order: 5, is_active: true, item_count: 4 },
+    { name: 'Starters', display_order: 0, is_active: true, item_count: 0 },
+    { name: 'Main Course', display_order: 1, is_active: true, item_count: 0 },
+    { name: 'Beverages', display_order: 4, is_active: true, item_count: 0 },
   ]);
-
-  // Seed menu items
-  const menuItemSeeds: Omit<MenuItem, 'id'>[] = [
-    { category_id: 1, name: 'Paneer Tikka', price: 280, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, variants: [{ id: 'v1', name: 'Half', price_modifier: -80, modifier_type: 'add' }, { id: 'v2', name: 'Full', price_modifier: 0, modifier_type: 'add' }], created_at: new Date(), updated_at: new Date() },
-    { category_id: 1, name: 'Chicken Tikka', price: 320, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 1, name: 'Veg Spring Roll', price: 180, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 1, name: 'Fish Amritsari', price: 380, item_type: 'non-veg', is_available: false, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 1, name: 'Hara Bhara Kebab', price: 220, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 1, name: 'Tandoori Chicken', price: 350, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, variants: [{ id: 'v3', name: 'Half', price_modifier: -100, modifier_type: 'add' }, { id: 'v4', name: 'Full', price_modifier: 0, modifier_type: 'add' }], created_at: new Date(), updated_at: new Date() },
-    { category_id: 1, name: 'Mushroom Galouti', price: 260, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 1, name: 'Seekh Kebab', price: 300, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Paneer Butter Masala', price: 280, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Dal Tadka', price: 180, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Butter Chicken', price: 320, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Palak Paneer', price: 260, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Chicken Curry', price: 280, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Aloo Gobi', price: 180, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Mutton Rogan Josh', price: 420, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Mixed Veg', price: 200, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Kadai Paneer', price: 270, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Fish Curry', price: 360, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Chole Masala', price: 180, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 2, name: 'Egg Curry', price: 200, item_type: 'egg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 3, name: 'Butter Naan', price: 60, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 3, name: 'Garlic Naan', price: 70, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 3, name: 'Roti', price: 30, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 3, name: 'Laccha Paratha', price: 60, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 3, name: 'Missi Roti', price: 50, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 3, name: 'Kulcha', price: 70, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 4, name: 'Jeera Rice', price: 150, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 4, name: 'Veg Biryani', price: 220, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 4, name: 'Chicken Biryani', price: 300, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 4, name: 'Mutton Biryani', price: 380, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 4, name: 'Steamed Rice', price: 100, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Masala Chai', price: 40, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Fresh Lime Soda', price: 60, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Mango Lassi', price: 90, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Buttermilk', price: 50, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Cold Coffee', price: 120, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Mineral Water', price: 30, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Soft Drink', price: 50, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 5, name: 'Fresh Juice', price: 100, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 6, name: 'Gulab Jamun', price: 80, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 6, name: 'Rasmalai', price: 100, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-    { category_id: 6, name: 'Ice Cream', price: 120, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, variants: [{ id: 'v5', name: 'Vanilla', price_modifier: 0, modifier_type: 'add' }, { id: 'v6', name: 'Chocolate', price_modifier: 20, modifier_type: 'add' }, { id: 'v7', name: 'Butterscotch', price_modifier: 20, modifier_type: 'add' }], created_at: new Date(), updated_at: new Date() },
-    { category_id: 6, name: 'Kheer', price: 90, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, created_at: new Date(), updated_at: new Date() },
-  ];
-  await db.menuItems.bulkAdd(menuItemSeeds);
 
   // Seed tax config
   await db.taxConfig.bulkAdd([
     { name: 'GST 5%', rate: 5, type: 'gst', is_active: true, is_inclusive: false },
     { name: 'CGST 2.5%', rate: 2.5, type: 'cgst', is_active: true, is_inclusive: false },
     { name: 'SGST 2.5%', rate: 2.5, type: 'sgst', is_active: true, is_inclusive: false },
-    { name: 'Service Charge', rate: 0, type: 'service_charge', is_active: false, is_inclusive: false },
-    { name: 'Packaging Charge', rate: 0, type: 'packaging', is_active: false, is_inclusive: false },
   ]);
 
   // Seed payment methods
   await db.paymentMethods.bulkAdd([
     { name: 'Cash', type: 'cash', is_active: true, display_order: 0 },
     { name: 'UPI', type: 'upi', is_active: true, display_order: 1 },
-    { name: 'Credit/Debit Card', type: 'card', is_active: true, display_order: 2 },
-    { name: 'Digital Wallet', type: 'wallet', is_active: true, display_order: 3 },
-    { name: 'Complimentary', type: 'complimentary', is_active: true, display_order: 4 },
+    { name: 'Card', type: 'card', is_active: true, display_order: 2 },
   ]);
 
-  // Seed ingredients
-  await db.ingredients.bulkAdd([
-    { name: 'Onions', category: 'vegetables', unit: 'kg', current_stock: 25, min_level: 10, cost_per_unit: 30, status: 'normal' },
-    { name: 'Tomatoes', category: 'vegetables', unit: 'kg', current_stock: 8, min_level: 10, cost_per_unit: 40, status: 'low' },
-    { name: 'Chicken', category: 'meat', unit: 'kg', current_stock: 15, min_level: 5, cost_per_unit: 220, status: 'normal' },
-    { name: 'Paneer', category: 'dairy', unit: 'kg', current_stock: 3, min_level: 5, cost_per_unit: 320, status: 'low' },
-    { name: 'Basmati Rice', category: 'grains', unit: 'kg', current_stock: 50, min_level: 20, cost_per_unit: 80, status: 'normal' },
-    { name: 'Cooking Oil', category: 'other', unit: 'L', current_stock: 20, min_level: 10, cost_per_unit: 150, status: 'normal' },
-    { name: 'Flour (Atta)', category: 'grains', unit: 'kg', current_stock: 30, min_level: 15, cost_per_unit: 45, status: 'normal' },
-    { name: 'Butter', category: 'dairy', unit: 'kg', current_stock: 2, min_level: 3, cost_per_unit: 480, status: 'low' },
-    { name: 'Cream', category: 'dairy', unit: 'L', current_stock: 5, min_level: 3, cost_per_unit: 200, status: 'normal' },
-    { name: 'Mutton', category: 'meat', unit: 'kg', current_stock: 0, min_level: 3, cost_per_unit: 650, status: 'out' },
-    { name: 'Ginger-Garlic Paste', category: 'spices', unit: 'kg', current_stock: 4, min_level: 2, cost_per_unit: 120, status: 'normal' },
-    { name: 'Green Chillies', category: 'vegetables', unit: 'kg', current_stock: 1.5, min_level: 1, cost_per_unit: 60, status: 'normal' },
-  ]);
-
-  // Seed vendors
-  await db.vendors.bulkAdd([
-    { name: 'Fresh Farm Supplies', contact_person: 'Ravi Kumar', phone: '9876543210', category: 'Vegetables', outstanding_amount: 12500, is_active: true },
-    { name: 'Delhi Meat House', contact_person: 'Imran Khan', phone: '9876543211', category: 'Meat', outstanding_amount: 28000, is_active: true },
-    { name: 'Amul Distributors', contact_person: 'Suresh Patel', phone: '9876543212', category: 'Dairy', outstanding_amount: 8500, is_active: true },
-    { name: 'Spice World Traders', contact_person: 'Geeta Sharma', phone: '9876543213', category: 'Spices', outstanding_amount: 0, is_active: true },
-  ]);
-
-  // Seed sample orders for dashboard
-  const now = new Date();
-  for (let i = 0; i < 15; i++) {
-    const orderDate = new Date(now);
-    orderDate.setHours(10 + Math.floor(Math.random() * 12));
-    orderDate.setMinutes(Math.floor(Math.random() * 60));
-    const subtotal = Math.floor(Math.random() * 2000) + 200;
-    const tax = Math.floor(subtotal * 0.05);
-    await db.orders.add({
-      order_number: `ORD-${String(i + 1).padStart(4, '0')}`,
-      order_type: (['dine_in', 'takeaway', 'delivery'] as const)[Math.floor(Math.random() * 3)],
-      status: 'paid',
-      subtotal,
-      discount_amount: 0,
-      tax_amount: tax,
-      service_charge: 0,
-      packaging_charge: 0,
-      delivery_charge: 0,
-      total: subtotal + tax,
-      payment_method: ['Cash', 'UPI', 'Card'][Math.floor(Math.random() * 3)],
-      payment_status: 'paid',
-      kot_count: 1,
-      created_at: orderDate,
-      updated_at: orderDate,
-      paid_at: orderDate,
-    });
-  }
+  // Initial state should have 0 orders/billing as per user request
+  console.log('✅ Database seeded with basic structure only.');
 
   // Seed app settings
   await db.settings.bulkAdd([

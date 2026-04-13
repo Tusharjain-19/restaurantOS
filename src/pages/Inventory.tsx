@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Package, Search, AlertTriangle, TrendingDown, Plus, Edit2, Trash2, ShoppingCart, ArrowDownCircle, BarChart3, Leaf } from 'lucide-react';
+import { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
+import { Package, Search, AlertTriangle, TrendingDown, Plus, Edit2, Trash2, ShoppingCart, ArrowDownCircle, BarChart3, Leaf, Download, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import { toast } from 'sonner';
 import { db, type Ingredient, type Vendor, type PurchaseOrder, type WastageLog } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cn } from '@/lib/utils';
+import { exportToExcel } from '@/lib/export';
 
 export default function Inventory() {
   const [tab, setTab] = useState('stock');
@@ -48,6 +50,7 @@ function StockView() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [editItem, setEditItem] = useState<Partial<Ingredient> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categories = [...new Set(ingredients.map(i => i.category))];
   const filtered = ingredients.filter(i => {
@@ -62,14 +65,63 @@ function StockView() {
 
   const saveIngredient = async () => {
     if (!editItem?.name) return;
-    const status = editItem.current_stock! <= 0 ? 'out' : editItem.current_stock! <= editItem.min_level! ? 'low' : 'normal';
+    const status = (editItem.current_stock || 0) <= 0 ? 'out' : (editItem.current_stock || 0) <= (editItem.min_level || 5) ? 'low' : 'normal';
     if (editItem.id) {
       await db.ingredients.update(editItem.id, { ...editItem, status });
     } else {
-      await db.ingredients.add({ ...editItem as any, status });
+      await db.ingredients.add({ ...editItem as any, status, last_restocked: new Date() });
     }
     setEditItem(null);
     toast.success('Ingredient saved');
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+
+        if (rows.length === 0) {
+          toast.error('The selected file is empty');
+          return;
+        }
+
+        const ingredientsToImport: Omit<Ingredient, 'id'>[] = rows.map(row => {
+          const name = row.Name || row.name || row.Item || '';
+          const category = (row.Category || row.category || 'other').toLowerCase();
+          const unit = row.Unit || row.unit || 'kg';
+          const current_stock = Number(row.Stock || row.stock || row['Current Stock'] || 0);
+          const min_level = Number(row.Min || row.min || row['Min Level'] || 5);
+          const cost_per_unit = Number(row.Cost || row.cost || row['Price'] || 0);
+          
+          const status = current_stock <= 0 ? 'out' : current_stock <= min_level ? 'low' : 'normal';
+
+          return {
+            name,
+            category,
+            unit,
+            current_stock,
+            min_level,
+            cost_per_unit,
+            status,
+            last_restocked: new Date()
+          };
+        }).filter(i => i.name);
+
+        if (ingredientsToImport.length > 0) {
+          await db.ingredients.bulkAdd(ingredientsToImport as any);
+          toast.success(`Successfully imported ${ingredientsToImport.length} items`);
+        }
+      };
+      reader.readAsBinaryString(file);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to import Excel file. Please check the format.');
+    }
   };
 
   // Chart data
@@ -99,7 +151,24 @@ function StockView() {
             {categories.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button onClick={() => setEditItem({ name: '', category: 'other', unit: 'kg', current_stock: 0, min_level: 5, cost_per_unit: 0, status: 'normal' })} className="gap-1">
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept=".xlsx, .xls"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImport(file);
+            e.target.value = '';
+          }}
+        />
+        <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-1 border-dashed hover:border-orange-500 hover:bg-orange-50">
+          <Upload className="h-4 w-4" /> Import
+        </Button>
+        <Button variant="outline" onClick={() => exportToExcel(ingredients, 'Inventory_Report')} className="gap-1">
+          <Download className="h-4 w-4" /> Export
+        </Button>
+        <Button onClick={() => setEditItem({ name: '', category: 'other', unit: 'kg', current_stock: 0, min_level: 5, cost_per_unit: 0, status: 'normal' })} className="gap-1 shadow-md shadow-orange-500/10">
           <Plus className="h-4 w-4" /> Add Item
         </Button>
       </div>
