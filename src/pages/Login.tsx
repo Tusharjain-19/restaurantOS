@@ -72,57 +72,95 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[hsl(215,60%,12%)] via-[hsl(215,50%,18%)] to-[hsl(215,40%,8%)] p-4">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-accent/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/3 rounded-full blur-[100px]" />
-      </div>
-
-      <div className="relative w-full max-w-md">
-        {/* Glassmorphism card */}
-        <div className="rounded-2xl bg-white/[0.07] backdrop-blur-xl border border-white/10 p-8 shadow-2xl shadow-black/20">
-          <div className="mb-8 flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-orange-600 shadow-lg shadow-accent/30">
-                <UtensilsCrossed className="h-10 w-10 text-white" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-success border-2 border-[hsl(215,50%,18%)] animate-pulse" />
+    <div className="flex min-h-screen w-full bg-white text-zinc-950 font-sans">
+      {/* Left Panel - Project Info */}
+      <div className="hidden lg:flex w-1/2 bg-zinc-50 border-r border-zinc-200 p-12 flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-12">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-sm">
+              <UtensilsCrossed className="h-5 w-5" />
             </div>
-            <div className="text-center">
-              <h1 className="text-3xl font-bold text-white tracking-tight">RestaurantOS</h1>
-              <p className="text-sm text-white/50 mt-1">Restaurant Management System</p>
-            </div>
+            <span className="text-xl font-semibold tracking-tight">RestaurantOS</span>
           </div>
 
-          {/* Login mode toggle */}
-          <div className="flex gap-1 mb-6 bg-white/5 rounded-xl p-1">
+          <div className="space-y-8 max-w-md">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight mb-4">About the Project</h2>
+              <p className="text-zinc-600 leading-relaxed">
+                RestaurantOS is a comprehensive, local-first restaurant management system. It's designed to handle everything from point-of-sale transactions and kitchen ticketing to inventory management and detailed analytics, all working seamlessly even offline.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold tracking-tight mb-3">How HQ-Admin Works</h3>
+              <ul className="space-y-3 text-zinc-600">
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-900 shrink-0" />
+                  <span><strong className="text-zinc-900 font-medium">Centralized Control:</strong> Manage multiple branches, staff roles, and global menus from a single dashboard.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-900 shrink-0" />
+                  <span><strong className="text-zinc-900 font-medium">Data Synchronization:</strong> Local-first architecture ensures fast performance on-site while background sync keeps the cloud database up to date.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-900 shrink-0" />
+                  <span><strong className="text-zinc-900 font-medium">Real-time Analytics:</strong> Monitor sales, inventory alerts, and staff performance metrics across all your locations in real-time.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div className="text-sm text-zinc-500">
+          &copy; {new Date().getFullYear()} RestaurantOS Platform. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right Panel - Login Form */}
+      <div className="flex-1 flex flex-col items-center justify-center p-8 lg:p-12">
+        <div className="w-full max-w-[400px] space-y-8">
+          
+          {/* Mobile Header (Hidden on large screens) */}
+          <div className="lg:hidden flex flex-col items-center gap-4 mb-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-sm">
+              <UtensilsCrossed className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">RestaurantOS</h1>
+          </div>
+
+          <div className="text-center lg:text-left">
+            <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
+            <p className="text-zinc-500 mt-2 text-sm">Sign in to your account or use the demo to continue.</p>
+          </div>
+
+          <div className="flex gap-2 p-1 bg-zinc-100 rounded-lg">
             <button
+              type="button"
               onClick={() => setLoginMode('password')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
                 loginMode === 'password'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-white/50 hover:text-white/80'
+                  ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50'
+                  : 'text-zinc-500 hover:text-zinc-900'
               }`}
             >
               Password Login
             </button>
             <button
+              type="button"
               onClick={() => setLoginMode('pin')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 loginMode === 'pin'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-white/50 hover:text-white/80'
+                  ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50'
+                  : 'text-zinc-500 hover:text-zinc-900'
               }`}
             >
-              <Keyboard className="h-3.5 w-3.5" /> Quick PIN
+              <Keyboard className="h-4 w-4" /> Quick PIN
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-sm text-red-300">
+              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
@@ -130,7 +168,7 @@ export default function Login() {
             {loginMode === 'password' ? (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-white/70 text-xs uppercase tracking-wider">Username / Email / Phone</Label>
+                  <Label htmlFor="email" className="text-zinc-700 text-xs uppercase tracking-wider font-semibold">Username / Email / Phone</Label>
                   <Input
                     id="email"
                     type="text"
@@ -138,12 +176,12 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="username"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/25 h-12 rounded-xl focus:border-accent/50 focus:ring-accent/20"
+                    className="bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 h-11 rounded-lg focus:border-zinc-500 focus:ring-zinc-500"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-white/70 text-xs uppercase tracking-wider">Password</Label>
+                  <Label htmlFor="password" className="text-zinc-700 text-xs uppercase tracking-wider font-semibold">Password</Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -152,11 +190,11 @@ export default function Login() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="current-password"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/25 h-12 rounded-xl focus:border-accent/50 focus:ring-accent/20"
+                      className="bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 h-11 rounded-lg focus:border-zinc-500 focus:ring-zinc-500 pr-10"
                     />
                     <button
                       type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -170,23 +208,23 @@ export default function Login() {
                       id="remember"
                       checked={remember}
                       onCheckedChange={(v) => setRemember(!!v)}
-                      className="border-white/20"
+                      className="border-zinc-300 text-zinc-900 focus:ring-zinc-900"
                     />
-                    <Label htmlFor="remember" className="text-sm font-normal text-white/50">Remember me</Label>
+                    <Label htmlFor="remember" className="text-sm font-normal text-zinc-600">Remember me</Label>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="space-y-3">
-                <Label htmlFor="pin" className="text-white/70 text-xs uppercase tracking-wider">Enter 4-Digit PIN</Label>
-                <div className="flex justify-center gap-3">
+              <div className="space-y-4">
+                <Label htmlFor="pin" className="text-zinc-700 text-xs uppercase tracking-wider font-semibold block text-center lg:text-left">Enter 4-Digit PIN</Label>
+                <div className="flex justify-center lg:justify-start gap-3">
                   {[0, 1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className={`h-14 w-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all ${
+                      className={`h-14 w-14 rounded-lg border-2 flex items-center justify-center text-2xl font-bold transition-all ${
                         pin[i]
-                          ? 'border-accent bg-accent/10 text-white'
-                          : 'border-white/10 bg-white/5 text-white/20'
+                          ? 'border-zinc-900 bg-zinc-900 text-white'
+                          : 'border-zinc-200 bg-zinc-50 text-transparent'
                       }`}
                     >
                       {pin[i] ? '•' : ''}
@@ -200,16 +238,16 @@ export default function Login() {
                   maxLength={4}
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  className="opacity-0 absolute"
+                  className="opacity-0 absolute -z-10 w-0 h-0"
                   autoFocus
                 />
-                <p className="text-center text-xs text-white/30">Default PIN: 1234</p>
+                <p className="text-center lg:text-left text-xs text-zinc-500 mt-2">Default PIN: 1234</p>
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-accent to-orange-600 text-white hover:from-accent/90 hover:to-orange-600/90 h-12 rounded-xl text-base font-semibold shadow-lg shadow-accent/20 transition-all hover:shadow-xl hover:shadow-accent/30"
+              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white h-11 rounded-lg text-base font-medium transition-all"
               disabled={loading}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -217,12 +255,12 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="mt-4 relative">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-white/10" />
+              <span className="w-full border-t border-zinc-200" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#121b2a] px-2 text-white/50">Or continue with</span>
+              <span className="bg-white px-2 text-zinc-500 font-medium tracking-wide">Or continue with</span>
             </div>
           </div>
 
@@ -230,7 +268,8 @@ export default function Login() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full mt-4 bg-white hover:bg-gray-100 text-gray-900 h-12 rounded-xl text-base font-semibold transition-all flex items-center justify-center gap-2"
+            variant="outline"
+            className="w-full h-11 rounded-lg text-base font-medium transition-all flex items-center justify-center gap-2 border-zinc-300 hover:bg-zinc-50 text-zinc-700 hover:text-zinc-900"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -254,14 +293,11 @@ export default function Login() {
           </Button>
 
           {/* Offline indicator */}
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-white/30">
-            <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+          <div className="flex items-center justify-center lg:justify-start gap-2 text-xs text-zinc-500 mt-8">
+            <div className="h-2 w-2 rounded-full bg-emerald-500" />
             <span>Offline Mode — No Internet Required</span>
           </div>
         </div>
-
-        {/* Version */}
-        <p className="text-center text-[10px] text-white/20 mt-4">RestaurantOS v1.0 • Production Ready</p>
       </div>
     </div>
   );
