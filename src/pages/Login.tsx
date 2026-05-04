@@ -60,18 +60,18 @@ export default function Login() {
 
           <div className="max-w-md space-y-8">
             <h1 className="text-5xl font-bold text-white leading-tight">
-              Unified <span className="text-zinc-400">Operations.</span>
+              Empowering <span className="text-zinc-400">Operations.</span>
             </h1>
             <p className="text-xl text-zinc-300 leading-relaxed font-light">
-              The most powerful way to manage your entire restaurant group from a single, beautiful dashboard.
+              The most efficient way to manage your restaurant's daily workflow from a single, intuitive interface.
             </p>
             
             <div className="space-y-4 pt-4">
               {[
-                "Real-time Inventory Control",
-                "Advanced Staff Performance",
-                "Multi-location Sync",
-                "Automated Cloud Reports"
+                "Real-time Order Management",
+                "Kitchen Sync & Display",
+                "Table Status & Management",
+                "Live Inventory Tracking"
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-3 text-zinc-400">
                   <CheckCircle2 className="h-5 w-5 text-white/40" />
@@ -82,7 +82,7 @@ export default function Login() {
           </div>
 
           <div className="text-zinc-500 text-sm font-medium">
-            © 2026 RestaurantOS HQ. All rights reserved.
+            © 2026 RestaurantOS. All rights reserved.
           </div>
         </div>
       </div>
@@ -91,8 +91,8 @@ export default function Login() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 bg-white dark:bg-zinc-950">
         <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="space-y-2">
-            <h2 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-white">HQ Admin Login</h2>
-            <p className="text-zinc-500 dark:text-zinc-400">Enter your credentials to manage your locations</p>
+            <h2 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-white">Staff Login</h2>
+            <p className="text-zinc-500 dark:text-zinc-400">Enter your credentials to access your dashboard</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -104,7 +104,7 @@ export default function Login() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@restaurant.com"
+                    placeholder="staff@restaurant.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 h-11 border-zinc-200 bg-zinc-50/50 focus:bg-white focus:ring-1 focus:ring-zinc-950 transition-all rounded-lg"
@@ -164,7 +164,7 @@ export default function Login() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  Sign In to HQ <ArrowRight className="h-4 w-4" />
+                  Sign In <ArrowRight className="h-4 w-4" />
                 </div>
               )}
             </Button>
@@ -191,7 +191,7 @@ export default function Login() {
           </Button>
 
           <p className="text-center text-sm text-zinc-500">
-            Don't have an account? <a href="#" className="font-semibold text-zinc-950 hover:underline">Contact System Admin</a>
+            Don't have an account? <a href="#" className="font-semibold text-zinc-950 hover:underline">Contact Manager</a>
           </p>
         </div>
       </div>
