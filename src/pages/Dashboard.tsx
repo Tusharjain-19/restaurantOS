@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 
-const PIE_COLORS = ['hsl(215, 60%, 50%)', 'hsl(24, 90%, 50%)', 'hsl(150, 60%, 40%)', 'hsl(45, 93%, 52%)'];
+const PIE_COLORS = ['#09090b', '#27272a', '#52525b', '#a1a1aa'];
 
 export default function Dashboard() {
   const orders = useLiveQuery(() => db.orders.toArray()) || [];
@@ -78,10 +78,10 @@ export default function Dashboard() {
   const paymentData = Object.entries(paymentBreakdown).map(([name, value]) => ({ name, value }));
 
   const stats = [
-    { title: "Today's Revenue", value: `₹${todayRevenue.toLocaleString()}`, change: `${revenueChange >= 0 ? '+' : ''}${revenueChange}%`, positive: revenueChange >= 0, subtitle: `Yesterday: ₹${yesterdayRevenue.toLocaleString()}`, icon: IndianRupee, color: 'bg-emerald-500/10 text-emerald-600' },
-    { title: 'Orders Today', value: todayOrderCount.toString(), change: `${orderChange >= 0 ? '+' : ''}${orderChange}%`, positive: orderChange >= 0, subtitle: `Yesterday: ${yesterdayOrderCount}`, icon: ShoppingCart, color: 'bg-blue-500/10 text-blue-600' },
-    { title: 'Active Tables', value: `${activeTables}/${totalTables}`, change: '', positive: true, subtitle: `${totalTables - activeTables} available`, icon: LayoutDashboard, color: 'bg-purple-500/10 text-purple-600' },
-    { title: 'Avg Order Value', value: `₹${avgOrderValue}`, change: '', positive: true, subtitle: `${todayOrderCount} orders`, icon: TrendingUp, color: 'bg-amber-500/10 text-amber-600' },
+    { title: "Today's Revenue", value: `₹${todayRevenue.toLocaleString()}`, change: `${revenueChange >= 0 ? '+' : ''}${revenueChange}%`, positive: revenueChange >= 0, subtitle: `Yesterday: ₹${yesterdayRevenue.toLocaleString()}`, icon: IndianRupee, color: 'bg-zinc-100 text-zinc-900 border border-zinc-200' },
+    { title: 'Orders Today', value: todayOrderCount.toString(), change: `${orderChange >= 0 ? '+' : ''}${orderChange}%`, positive: orderChange >= 0, subtitle: `Yesterday: ${yesterdayOrderCount}`, icon: ShoppingCart, color: 'bg-zinc-100 text-zinc-900 border border-zinc-200' },
+    { title: 'Active Tables', value: `${activeTables}/${totalTables}`, change: '', positive: true, subtitle: `${totalTables - activeTables} available`, icon: LayoutDashboard, color: 'bg-zinc-100 text-zinc-900 border border-zinc-200' },
+    { title: 'Avg Order Value', value: `₹${avgOrderValue}`, change: '', positive: true, subtitle: `${todayOrderCount} orders`, icon: TrendingUp, color: 'bg-zinc-100 text-zinc-900 border border-zinc-200' },
   ];
 
   return (
@@ -91,9 +91,9 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">{today.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-          Offline — All data stored locally
+        <div className="flex items-center gap-2 text-xs font-medium text-zinc-500 bg-zinc-50 px-3 py-1 rounded-full border border-zinc-200">
+          <div className="h-2 w-2 rounded-full bg-zinc-900" />
+          HQ Cloud Connected
         </div>
       </div>
 
@@ -160,8 +160,11 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="time" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(val: number) => [`₹${val.toLocaleString()}`, 'Revenue']} />
-                <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: '12px' }}
+                  formatter={(val: number) => [`₹${val.toLocaleString()}`, 'Revenue']} 
+                />
+                <Line type="monotone" dataKey="revenue" stroke="#09090b" strokeWidth={3} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -175,8 +178,11 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(val: number) => [`₹${val.toLocaleString()}`, 'Revenue']} />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: '12px' }}
+                  formatter={(val: number) => [`₹${val.toLocaleString()}`, 'Revenue']} 
+                />
+                <Bar dataKey="revenue" fill="#09090b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { db, type StaffMember, seedDatabase } from '@/lib/db';
 import { pullAllData, pushAllData, clearCachedRestaurantId } from '@/lib/syncService';
+import { supabase } from '@/lib/supabase';
 
 export type UserRole = 'admin' | 'manager' | 'captain' | 'cashier' | 'kitchen' | 'delivery';
 
@@ -60,12 +61,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (get().initialized) return;
     try {
       await seedDatabase();
+      
+      // Listen for Supabase auth changes
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          // Link Supabase user to staff record
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('*')
+            .eq('email', session.user.email)
+            .single();
+
+          if (staffData) {
+            const profile = staffToProfile(staffData);
+            set({ user: profile, profile, loading: false });
+            localStorage.setItem('ros_current_user', String(staffData.id));
+            pullAllData().catch(console.error);
+          } else if (localStorage.getItem('ros_demo_mode') === 'true') {
+            // Demo mode fallback
+            const allStaff = await db.staff.toArray();
+            const admin = allStaff.find(s => s.role === 'admin');
+            if (admin) {
+              const profile = staffToProfile(admin);
+              profile.name = 'Default';
+              profile.email = session.user.email || 'demo@gmail.com';
+              set({ user: profile, profile, isDemoMode: true });
+            }
+          }
+        } else {
+          // No session
+          set({ user: null, profile: null });
+        }
+      });
+
       const savedDemoMode = localStorage.getItem('ros_demo_mode');
       if (savedDemoMode === 'true') {
         set({ isDemoMode: true });
       }
       
-      // Check for saved session
       const savedUserId = localStorage.getItem('ros_current_user');
       if (savedUserId) {
         const staff = await db.staff.get(Number(savedUserId));
@@ -76,7 +109,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             profile.email = 'demo@gmail.com';
           }
           set({ user: profile, profile, loading: false, initialized: true });
-          pullAllData().catch(console.error); // Background sync
+          pullAllData().catch(console.error);
           return;
         }
       }
@@ -87,34 +120,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signIn: async (identifier, password) => {
+  signIn: async (email, password) => {
     set({ loading: true });
     try {
-      try { await seedDatabase(); } catch (e) { console.warn('Seed skipped:', e); }
-      // identifier can be email, phone, or name
-      const allStaff = await db.staff.toArray();
-      console.log('[Auth] Staff count:', allStaff.length, 'Looking for:', identifier);
-      const staff = allStaff.find(s =>
-        s.is_active && (
-          (s.email && s.email.toLowerCase() === identifier.toLowerCase()) ||
-          s.phone === identifier ||
-          s.name.toLowerCase() === identifier.toLowerCase()
-        ) && s.password_hash === password
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (!staff) {
+      if (error) {
         set({ loading: false });
-        return { error: 'Invalid credentials. Default: Admin / admin123' };
+        return { error: error.message };
       }
 
-      const profile = staffToProfile(staff);
-      localStorage.setItem('ros_current_user', String(staff.id));
-      set({ user: profile, profile, loading: false });
-      
-      // Pull data from cloud after login
-      pullAllData().catch(console.error);
-      
-      return { error: null };
+      if (data.user) {
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('*')
+          .eq('email', email)
+          .single();
+
+        if (staffData) {
+          const profile = staffToProfile(staffData);
+          localStorage.setItem('ros_current_user', String(staffData.id));
+          set({ user: profile, profile, loading: false });
+          pullAllData().catch(console.error);
+          return { error: null };
+        }
+      }
+
+      set({ loading: false });
+      return { error: 'Login successful but no associated staff profile found.' };
     } catch (error) {
       console.error('[Auth] Login error:', error);
       set({ loading: false });
@@ -147,35 +183,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithGoogle: async () => {
     set({ loading: true });
     try {
-      try { await seedDatabase(); } catch (e) { console.warn('Seed skipped:', e); }
-      const allStaff = await db.staff.toArray();
-      const adminStaff = allStaff.find(s => s.role === 'admin' && s.is_active);
-      
-      if (!adminStaff) {
-        set({ loading: false });
-        return { error: 'Could not create demo account' };
-      }
-
-      const profile = staffToProfile(adminStaff);
-      profile.name = 'Default';
-      profile.email = 'demo@gmail.com';
-      
-      localStorage.setItem('ros_current_user', String(adminStaff.id));
       localStorage.setItem('ros_demo_mode', 'true');
-      
-      set({ user: profile, profile, isDemoMode: true, loading: false });
-      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
       return { error: null };
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Auth] Google login error:', error);
       set({ loading: false });
-      return { error: 'Google Login failed. Please try again.' };
+      return { error: error.message || 'Google Login failed.' };
     }
   },
 
   signOut: async () => {
-    // Push data to cloud before signing out
     await pushAllData().catch(console.error);
+    await supabase.auth.signOut();
     clearCachedRestaurantId();
     localStorage.removeItem('ros_current_user');
     localStorage.removeItem('ros_demo_mode');
