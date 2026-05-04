@@ -193,7 +193,7 @@ export default function POS() {
         unit_price: price,
         special_instructions: instructions,
         kot_status: 'pending' as const,
-        is_addon: prev.some(o => o.kot_status === 'sent'),
+        is_addon: prev.some(o => o.kot_status !== 'pending'),
       }];
     });
   }, []);
@@ -203,8 +203,8 @@ export default function POS() {
       const item = prev.find(o => o.id === id);
       if (!item) return prev;
 
-      // If increasing quantity of a 'sent' item, create/update a 'pending' addon instead
-      if (delta > 0 && item.kot_status === 'sent') {
+      // If increasing quantity of an item that is already sent/in_prep/ready, create/update a 'pending' addon instead
+      if (delta > 0 && item.kot_status !== 'pending') {
         const existingPending = prev.find(o =>
           o.item_id === item.item_id &&
           o.variant_id === item.variant_id &&
