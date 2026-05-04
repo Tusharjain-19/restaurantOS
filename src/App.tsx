@@ -26,6 +26,7 @@ const CustomerProfile = lazy(() => import("@/pages/CustomerProfile"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
 const SuperAdmin = lazy(() => import("@/pages/SuperAdmin"));
 const Activation = lazy(() => import("@/pages/Activation"));
+const About = lazy(() => import("@/pages/About"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/about" element={<About />} />
               <Route path="/hq-admin" element={<SuperAdmin />} />
               <Route path="/activation" element={<Activation />} />
               <Route path="/onboarding" element={

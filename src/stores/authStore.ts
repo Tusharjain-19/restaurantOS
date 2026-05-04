@@ -122,6 +122,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signIn: async (email, password) => {
     set({ loading: true });
+    
+    // Demo Account Bypass
+    if (email === 'admin@restaurant.com' && password === 'password123') {
+      try {
+        localStorage.setItem('ros_demo_mode', 'true');
+        const allStaff = await db.staff.toArray();
+        const adminStaff = allStaff.find(s => s.role === 'admin') || allStaff[0];
+        
+        if (adminStaff) {
+          const profile = staffToProfile(adminStaff);
+          profile.name = 'Demo Admin';
+          profile.email = 'admin@restaurant.com';
+          localStorage.setItem('ros_current_user', String(adminStaff.id));
+          set({ user: profile, profile, loading: false, isDemoMode: true });
+          return { error: null };
+        }
+      } catch (e) {
+        console.error('Demo login failed:', e);
+      }
+    }
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -143,7 +164,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (staffData) {
           const profile = staffToProfile(staffData);
           localStorage.setItem('ros_current_user', String(staffData.id));
-          set({ user: profile, profile, loading: false });
+          set({ user: profile, profile, loading: false, isDemoMode: false });
           pullAllData().catch(console.error);
           return { error: null };
         }

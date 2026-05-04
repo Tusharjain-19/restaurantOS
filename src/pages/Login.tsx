@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Mail, Lock, Eye, EyeOff, LogIn, Chrome, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, Chrome, CheckCircle2, ArrowRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -204,6 +204,16 @@ export default function Login() {
           <p className="text-center text-sm text-zinc-500">
             Don't have an account? <a href="mailto:jaint0910@gmail.com?subject=I%20want%20to%20try%2C%20give%20me%20credentials&body=Hello%2C%20I%20would%20like%20to%20try%20RestaurantOS.%20Please%20provide%20me%20with%20test%20credentials.%0A%0AMy%20Details%3A%0AName%3A%20%0ARestaurant%20Name%3A%20" className="font-semibold text-zinc-950 hover:underline">Contact Project Lead</a>
           </p>
+
+          <div className="pt-4 flex justify-center">
+            <button 
+              onClick={() => navigate('/about')}
+              className="text-xs font-medium text-zinc-400 hover:text-zinc-950 transition-colors flex items-center gap-1"
+            >
+              <HelpCircle className="h-3 w-3" />
+              View Guide & Features
+            </button>
+          </div>
         </div>
       </div>
     </div>
