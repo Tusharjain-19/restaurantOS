@@ -18,12 +18,15 @@ interface AuthState {
   profile: UserProfile | null;
   loading: boolean;
   initialized: boolean;
+  isDemoMode: boolean;
   setUser: (user: UserProfile | null) => void;
   setProfile: (profile: UserProfile | null) => void;
   setLoading: (loading: boolean) => void;
   setInitialized: (initialized: boolean) => void;
+  setIsDemoMode: (isDemoMode: boolean) => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithPin: (pin: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   fetchProfile: (userId: number) => Promise<UserProfile | null>;
   initialize: () => Promise<void>;
@@ -45,22 +48,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   loading: true,
   initialized: false,
+  isDemoMode: false,
 
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),
   setLoading: (loading) => set({ loading }),
   setInitialized: (initialized) => set({ initialized }),
+  setIsDemoMode: (isDemoMode) => set({ isDemoMode }),
 
   initialize: async () => {
     if (get().initialized) return;
     try {
       await seedDatabase();
+      const savedDemoMode = localStorage.getItem('ros_demo_mode');
+      if (savedDemoMode === 'true') {
+        set({ isDemoMode: true });
+      }
+      
       // Check for saved session
       const savedUserId = localStorage.getItem('ros_current_user');
       if (savedUserId) {
         const staff = await db.staff.get(Number(savedUserId));
         if (staff && staff.is_active) {
           const profile = staffToProfile(staff);
+          if (savedDemoMode === 'true') {
+            profile.name = 'Demo User';
+            profile.email = 'demo@gmail.com';
+          }
           set({ user: profile, profile, loading: false, initialized: true });
           pullAllData().catch(console.error); // Background sync
           return;
@@ -130,12 +144,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  signInWithGoogle: async () => {
+    set({ loading: true });
+    try {
+      try { await seedDatabase(); } catch (e) { console.warn('Seed skipped:', e); }
+      const allStaff = await db.staff.toArray();
+      const adminStaff = allStaff.find(s => s.role === 'admin' && s.is_active);
+      
+      if (!adminStaff) {
+        set({ loading: false });
+        return { error: 'Could not create demo account' };
+      }
+
+      const profile = staffToProfile(adminStaff);
+      profile.name = 'Demo User';
+      profile.email = 'demo@gmail.com';
+      
+      localStorage.setItem('ros_current_user', String(adminStaff.id));
+      localStorage.setItem('ros_demo_mode', 'true');
+      
+      set({ user: profile, profile, isDemoMode: true, loading: false });
+      
+      return { error: null };
+    } catch (error) {
+      console.error('[Auth] Google login error:', error);
+      set({ loading: false });
+      return { error: 'Google Login failed. Please try again.' };
+    }
+  },
+
   signOut: async () => {
     // Push data to cloud before signing out
     await pushAllData().catch(console.error);
     clearCachedRestaurantId();
     localStorage.removeItem('ros_current_user');
-    set({ user: null, profile: null });
+    localStorage.removeItem('ros_demo_mode');
+    set({ user: null, profile: null, isDemoMode: false });
   },
 
   fetchProfile: async (userId: number) => {

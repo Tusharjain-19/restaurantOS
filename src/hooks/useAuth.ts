@@ -14,8 +14,10 @@ export function useAuth() {
     role: store.profile?.role ?? null,
     loading: store.loading,
     initialized: store.initialized,
+    isDemoMode: store.isDemoMode,
     signIn: store.signIn,
     signInWithPin: store.signInWithPin,
+    signInWithGoogle: store.signInWithGoogle,
     signOut: store.signOut,
   };
 }
