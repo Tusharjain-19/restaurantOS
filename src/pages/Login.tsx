@@ -59,25 +59,42 @@ export default function Login() {
           </div>
 
           <div className="max-w-md space-y-8">
-            <h1 className="text-5xl font-bold text-white leading-tight">
-              Empowering <span className="text-zinc-400">Operations.</span>
-            </h1>
-            <p className="text-xl text-zinc-300 leading-relaxed font-light">
-              The most efficient way to manage your restaurant's daily workflow from a single, intuitive interface.
-            </p>
-            
-            <div className="space-y-4 pt-4">
-              {[
-                "Real-time Order Management",
-                "Kitchen Sync & Display",
-                "Table Status & Management",
-                "Live Inventory Tracking"
-              ].map((feature, i) => (
-                <div key={i} className="flex items-center gap-3 text-zinc-400">
-                  <CheckCircle2 className="h-5 w-5 text-white/40" />
-                  <span className="text-sm font-medium tracking-wide">{feature}</span>
+            <div className="space-y-4">
+              <h1 className="text-5xl font-bold text-white leading-tight">
+                Empowering <span className="text-zinc-400">Operations.</span>
+              </h1>
+              <p className="text-xl text-zinc-300 leading-relaxed font-light">
+                The most efficient way to manage your restaurant's daily workflow from a single, intuitive interface.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold uppercase tracking-widest text-zinc-500">Core Features</h3>
+                <div className="space-y-3">
+                  {[
+                    { title: "Real-time Order Management", desc: "Track every order from punch to payout with live status updates." },
+                    { title: "Kitchen Sync & Display", desc: "Instant KOT routing and kitchen timer management for zero delays." },
+                    { title: "Table Status & Management", desc: "Interactive floor plans with real-time occupancy and billing status." },
+                    { title: "Live Inventory Tracking", desc: "Automated stock alerts and ingredient-level tracking for efficiency." }
+                  ].map((feature, i) => (
+                    <div key={i} className="group">
+                      <div className="flex items-center gap-3 text-zinc-300 mb-1">
+                        <CheckCircle2 className="h-5 w-5 text-zinc-500 group-hover:text-white transition-colors" />
+                        <span className="text-sm font-semibold tracking-wide">{feature.title}</span>
+                      </div>
+                      <p className="text-xs text-zinc-500 pl-8 leading-relaxed">{feature.desc}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <div className="pt-4 border-t border-white/5">
+                <p className="text-xs text-zinc-500 leading-relaxed italic">
+                  Designed for modern dining establishments, RestaurantOS streamlines back-of-house coordination 
+                  and front-of-house service into one cohesive digital ecosystem.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -152,43 +169,37 @@ export default function Login() {
               <Label onClick={() => setRememberMe(!rememberMe)} className="text-sm font-medium text-zinc-600 cursor-pointer select-none">Remember me for 30 days</Label>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-12 bg-zinc-950 hover:bg-zinc-900 text-white font-semibold rounded-lg shadow-xl shadow-zinc-200 dark:shadow-none transition-all active:scale-[0.98]"
-              disabled={loading}
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Authenticating...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  Sign In <ArrowRight className="h-4 w-4" />
-                </div>
-              )}
-            </Button>
+            <div className="space-y-3">
+              <Button
+                type="submit"
+                className="w-full h-12 bg-zinc-950 hover:bg-zinc-900 text-white font-semibold rounded-lg shadow-xl shadow-zinc-200 dark:shadow-none transition-all active:scale-[0.98]"
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    Authenticating...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    Sign In <ArrowRight className="h-4 w-4" />
+                  </div>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEmail('admin@restaurant.com');
+                  setPassword('password123');
+                }}
+                className="w-full h-12 border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 transition-all font-semibold rounded-lg flex items-center justify-center gap-2"
+              >
+                Try Demo Account
+              </Button>
+            </div>
           </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-zinc-100" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-zinc-950 px-4 text-zinc-400 font-medium tracking-widest">Or continue with</span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-11 border-zinc-200 hover:bg-zinc-50 transition-colors gap-3 font-medium rounded-lg"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-          >
-            <Chrome className="h-5 w-5" />
-            Sign in with Google
-          </Button>
 
           <p className="text-center text-sm text-zinc-500">
             Don't have an account? <a href="#" className="font-semibold text-zinc-950 hover:underline">Contact Manager</a>
