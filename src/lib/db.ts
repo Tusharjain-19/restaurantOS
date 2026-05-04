@@ -410,7 +410,7 @@ class RestaurantDB extends Dexie {
   constructor() {
     super('RestaurantOS');
 
-    this.version(1).stores({
+    this.version(2).stores({
       restaurant: '++id',
       floors: '++id, display_order',
       restaurantTables: '++id, floor_id, status',
@@ -426,7 +426,7 @@ class RestaurantDB extends Dexie {
       ingredients: '++id, category, status',
       recipes: '++id, menu_item_id',
       vendors: '++id, category',
-      purchaseOrders: '++id, vendor_id, status',
+      purchaseOrders: '++id, vendor_id, status, created_at',
       wastageLogs: '++id, created_at',
       customers: '++id, phone, tier',
       reservations: '++id, date, status',
