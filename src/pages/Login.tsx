@@ -202,7 +202,7 @@ export default function Login() {
           </form>
 
           <p className="text-center text-sm text-zinc-500">
-            Don't have an account? <a href="#" className="font-semibold text-zinc-950 hover:underline">Contact Manager</a>
+            Don't have an account? <a href="mailto:jaint0910@gmail.com?subject=I%20want%20to%20try%2C%20give%20me%20credentials&body=Hello%2C%20I%20would%20like%20to%20try%20RestaurantOS.%20Please%20provide%20me%20with%20test%20credentials.%0A%0AMy%20Details%3A%0AName%3A%20%0ARestaurant%20Name%3A%20" className="font-semibold text-zinc-950 hover:underline">Contact Project Lead</a>
           </p>
         </div>
       </div>
