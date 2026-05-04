@@ -33,13 +33,11 @@ export default function Inventory() {
           <TabsTrigger value="stock" className="gap-1.5 text-xs"><Package className="h-3.5 w-3.5" />Stock</TabsTrigger>
           <TabsTrigger value="vendors" className="gap-1.5 text-xs"><ShoppingCart className="h-3.5 w-3.5" />Vendors</TabsTrigger>
           <TabsTrigger value="purchase" className="gap-1.5 text-xs"><ArrowDownCircle className="h-3.5 w-3.5" />Purchase Orders</TabsTrigger>
-          <TabsTrigger value="wastage" className="gap-1.5 text-xs"><Trash2 className="h-3.5 w-3.5" />Wastage</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stock"><StockView /></TabsContent>
         <TabsContent value="vendors"><VendorView /></TabsContent>
         <TabsContent value="purchase"><PurchaseView /></TabsContent>
-        <TabsContent value="wastage"><WastageView /></TabsContent>
       </Tabs>
     </div>
   );
@@ -367,75 +365,3 @@ function PurchaseView() {
   );
 }
 
-function WastageView() {
-  const wastageLogs = useLiveQuery(() => db.wastageLogs.orderBy('created_at').reverse().toArray()) || [];
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ item_name: '', quantity: 0, unit: 'pcs', cost: 0, reason: 'spoiled' as const, notes: '' });
-
-  const totalWaste = wastageLogs.reduce((s, w) => s + w.cost, 0);
-
-  const addWastage = async () => {
-    if (!form.item_name) return;
-    await db.wastageLogs.add({ ...form, created_at: new Date() });
-    toast.success('Wastage logged');
-    setShowAdd(false);
-    setForm({ item_name: '', quantity: 0, unit: 'pcs', cost: 0, reason: 'spoiled', notes: '' });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{wastageLogs.length} entries</p>
-          <p className="text-xs text-destructive font-medium">Total Waste Cost: ₹{totalWaste.toLocaleString()}</p>
-        </div>
-        <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1"><Plus className="h-3.5 w-3.5" /> Log Wastage</Button>
-      </div>
-
-      <div className="space-y-1.5">
-        {wastageLogs.map(w => (
-          <Card key={w.id}>
-            <CardContent className="p-3 flex items-center justify-between">
-              <div>
-                <span className="font-medium text-sm text-foreground">{w.item_name}</span>
-                <div className="text-xs text-muted-foreground">{w.quantity} {w.unit} • {w.reason} • {new Date(w.created_at).toLocaleDateString()}</div>
-              </div>
-              <span className="font-bold text-destructive">-₹{w.cost}</span>
-            </CardContent>
-          </Card>
-        ))}
-        {wastageLogs.length === 0 && <div className="text-center py-8 text-muted-foreground text-sm">No wastage entries</div>}
-      </div>
-
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Log Wastage</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Item Name</Label><Input value={form.item_name} onChange={e => setForm(f => ({ ...f, item_name: e.target.value }))} /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1"><Label>Quantity</Label><Input type="number" value={form.quantity || ''} onChange={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))} /></div>
-              <div className="space-y-1"><Label>Unit</Label><Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} /></div>
-              <div className="space-y-1"><Label>Cost (₹)</Label><Input type="number" value={form.cost || ''} onChange={e => setForm(f => ({ ...f, cost: Number(e.target.value) }))} /></div>
-            </div>
-            <div className="space-y-1">
-              <Label>Reason</Label>
-              <Select value={form.reason} onValueChange={v => setForm(f => ({ ...f, reason: v as any }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="spoiled">Spoiled</SelectItem>
-                  <SelectItem value="over_prepared">Over-Prepared</SelectItem>
-                  <SelectItem value="dropped">Dropped</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                  <SelectItem value="training">Training</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
-          </div>
-          <DialogFooter><Button onClick={addWastage}>Log Wastage</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}

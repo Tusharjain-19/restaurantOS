@@ -25,7 +25,6 @@ export default function Reports() {
   const bills = useLiveQuery(() => db.bills.toArray()) || [];
   const items = useLiveQuery(() => db.orderItems.toArray()) || [];
   const ingredients = useLiveQuery(() => db.ingredients.toArray()) || [];
-  const wastageLogs = useLiveQuery(() => db.wastageLogs.toArray()) || [];
   const menuItems = useLiveQuery(() => db.menuItems.toArray()) || [];
   const categories = useLiveQuery(() => db.menuCategories.toArray()) || [];
 
@@ -78,7 +77,6 @@ export default function Reports() {
     value: ingredients.filter(i => i.category === cat).reduce((s, i) => s + i.current_stock * i.cost_per_unit, 0),
   }));
 
-  const totalWasteCost = wastageLogs.reduce((s, w) => s + w.cost, 0);
   const totalInventoryValue = ingredients.reduce((s, i) => s + i.current_stock * i.cost_per_unit, 0);
   const totalRevenue = paidOrders.reduce((s, o) => s + o.total, 0);
   const totalOrders = paidOrders.length;
@@ -104,14 +102,6 @@ export default function Reports() {
         'Min Level': i.min_level,
         'Status': i.status,
         'Value': i.current_stock * i.cost_per_unit
-      })),
-      'Wastage_Logs': wastageLogs.map(w => ({
-        'Item': w.item_name,
-        'Quantity': w.quantity,
-        'Unit': w.unit,
-        'Cost': w.cost,
-        'Reason': w.reason,
-        'Date': new Date(w.created_at).toLocaleDateString()
       }))
     };
 
@@ -132,12 +122,11 @@ export default function Reports() {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Today's Revenue</p><p className="text-2xl font-bold text-foreground">₹{todayRevenue.toLocaleString()}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total Orders</p><p className="text-2xl font-bold text-foreground">{todayOrderCount}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Avg Order Value</p><p className="text-2xl font-bold text-foreground">₹{avgOrderValue}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Inventory Value</p><p className="text-2xl font-bold text-foreground">₹{totalInventoryValue.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Wastage Cost</p><p className="text-2xl font-bold text-destructive">₹{totalWasteCost.toLocaleString()}</p></CardContent></Card>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -290,7 +279,6 @@ export default function Reports() {
                 <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Avg Order Value</p><p className="text-2xl font-bold text-foreground">₹{totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0}</p></div>
                 <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Menu Items</p><p className="text-2xl font-bold text-foreground">{menuItems.length}</p></div>
                 <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Categories</p><p className="text-2xl font-bold text-foreground">{categories.length}</p></div>
-                <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Total Wastage</p><p className="text-2xl font-bold text-destructive">₹{totalWasteCost.toLocaleString()}</p></div>
               </div>
             </CardContent>
           </Card>
