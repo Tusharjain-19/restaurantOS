@@ -303,7 +303,7 @@ export async function pullAllData(): Promise<boolean> {
       .select('*')
       .eq('restaurant_id', rid)
       .order('created_at', { ascending: false })
-      .limit(500);
+      .limit(5000);
 
     if (orders && orders.length > 0) {
       // Merge — don't clear existing local orders not yet synced
@@ -343,7 +343,7 @@ export async function pullAllData(): Promise<boolean> {
       .select('*')
       .eq('restaurant_id', rid)
       .order('created_at', { ascending: false })
-      .limit(500);
+      .limit(5000);
 
     if (bills && bills.length > 0) {
       for (const b of bills) {

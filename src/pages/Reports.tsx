@@ -16,6 +16,7 @@ const CHART_COLORS = ['hsl(215, 60%, 50%)', 'hsl(24, 90%, 50%)', 'hsl(150, 60%, 
 
 export default function Reports() {
   const [tab, setTab] = useState('daily');
+  const [period, setPeriod] = useState('today'); // today, yesterday, this_month, this_year, all_time
   const [dateRange, setDateRange] = useState({
     from: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0],
@@ -30,11 +31,25 @@ export default function Reports() {
 
   const paidOrders = useMemo(() => orders.filter(o => o.status === 'paid'), [orders]);
 
-  const today = new Date().toDateString();
-  const todayOrders = paidOrders.filter(o => new Date(o.created_at).toDateString() === today);
-  const todayRevenue = todayOrders.reduce((s, o) => s + o.total, 0);
-  const todayOrderCount = todayOrders.length;
-  const avgOrderValue = todayOrderCount > 0 ? Math.round(todayRevenue / todayOrderCount) : 0;
+  const periodOrders = useMemo(() => {
+    const now = new Date();
+    return paidOrders.filter(o => {
+      const d = new Date(o.created_at);
+      if (period === 'today') return d.toDateString() === now.toDateString();
+      if (period === 'yesterday') {
+        const y = new Date(now);
+        y.setDate(y.getDate() - 1);
+        return d.toDateString() === y.toDateString();
+      }
+      if (period === 'this_month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (period === 'this_year') return d.getFullYear() === now.getFullYear();
+      return true; // all_time
+    });
+  }, [paidOrders, period]);
+
+  const periodRevenue = periodOrders.reduce((s, o) => s + o.total, 0);
+  const periodOrderCount = periodOrders.length;
+  const avgOrderValue = periodOrderCount > 0 ? Math.round(periodRevenue / periodOrderCount) : 0;
 
   // Last 7 days revenue
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -64,10 +79,10 @@ export default function Reports() {
   }, {} as Record<string, number>);
   const paymentData = Object.entries(paymentSplit).map(([name, value]) => ({ name, value }));
 
-  // Hourly distribution
+  // Hourly distribution (only makes sense for today/yesterday, but we'll show it for periodOrders)
   const hourlyData = Array.from({ length: 14 }, (_, i) => {
     const hour = i + 8;
-    const hourOrders = todayOrders.filter(o => new Date(o.created_at).getHours() === hour);
+    const hourOrders = periodOrders.filter(o => new Date(o.created_at).getHours() === hour);
     return { hour: `${hour > 12 ? hour - 12 : hour}${hour >= 12 ? 'PM' : 'AM'}`, orders: hourOrders.length, revenue: hourOrders.reduce((s, o) => s + o.total, 0) };
   });
 
@@ -116,15 +131,29 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
           <p className="text-sm text-muted-foreground">Comprehensive business insights</p>
         </div>
-        <Button variant="outline" className="gap-1.5" onClick={exportXLSX}>
-          <Download className="h-4 w-4" /> Export Excel
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[140px] h-9">
+              <SelectValue placeholder="Select Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="this_month">This Month</SelectItem>
+              <SelectItem value="this_year">This Year</SelectItem>
+              <SelectItem value="all_time">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" className="gap-1.5 h-9" onClick={exportXLSX}>
+            <Download className="h-4 w-4" /> Export Excel
+          </Button>
+        </div>
       </div>
 
       {/* KPI Row */}
       <div className="grid grid-cols-4 gap-3">
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Today's Revenue</p><p className="text-2xl font-bold text-foreground">₹{todayRevenue.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total Orders</p><p className="text-2xl font-bold text-foreground">{todayOrderCount}</p></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground capitalize">{period.replace('_', ' ')} Revenue</p><p className="text-2xl font-bold text-foreground">₹{periodRevenue.toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground capitalize">{period.replace('_', ' ')} Orders</p><p className="text-2xl font-bold text-foreground">{periodOrderCount}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Avg Order Value</p><p className="text-2xl font-bold text-foreground">₹{avgOrderValue}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Inventory Value</p><p className="text-2xl font-bold text-foreground">₹{totalInventoryValue.toLocaleString()}</p></CardContent></Card>
       </div>
