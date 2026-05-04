@@ -72,7 +72,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (staff && staff.is_active) {
           const profile = staffToProfile(staff);
           if (savedDemoMode === 'true') {
-            profile.name = 'Demo User';
+            profile.name = 'Default';
             profile.email = 'demo@gmail.com';
           }
           set({ user: profile, profile, loading: false, initialized: true });
@@ -157,7 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       const profile = staffToProfile(adminStaff);
-      profile.name = 'Demo User';
+      profile.name = 'Default';
       profile.email = 'demo@gmail.com';
       
       localStorage.setItem('ros_current_user', String(adminStaff.id));

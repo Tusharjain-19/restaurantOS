@@ -48,7 +48,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <div className="flex h-14 items-center gap-2 px-4 border-b border-sidebar-border">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-orange-600 shadow-sm">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 shadow-sm">
           <UtensilsCrossed className="h-4.5 w-4.5 text-white" />
         </div>
         {!collapsed && <span className="font-bold text-sidebar-primary text-sm tracking-tight">RestaurantOS</span>}
@@ -90,7 +90,7 @@ export function AppSidebar() {
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
-                    <AvatarFallback className="rounded-lg bg-orange-100 text-orange-600 font-bold">
+                    <AvatarFallback className="rounded-lg bg-zinc-100 text-zinc-900 font-bold border border-zinc-200">
                       {profile?.name?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -113,7 +113,7 @@ export function AppSidebar() {
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarImage src={profile?.avatar_url} alt={profile?.name} />
-                      <AvatarFallback className="rounded-lg bg-orange-100 text-orange-600 font-bold">
+                      <AvatarFallback className="rounded-lg bg-zinc-100 text-zinc-900 font-bold border border-zinc-200">
                         {profile?.name?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>

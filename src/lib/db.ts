@@ -479,7 +479,7 @@ export async function seedDatabase() {
 
   // Seed restaurant profile
   await db.restaurant.add({
-    name: 'My Restaurant',
+    name: 'Default',
     cuisine_type: 'Multi-Cuisine',
     restaurant_type: 'casual',
     address: '',
@@ -496,7 +496,7 @@ export async function seedDatabase() {
 
   // Seed default admin
   await db.staff.add({
-    name: 'Admin',
+    name: 'Default',
     phone: '0000000000',
     role: 'admin',
     pin: '1234',

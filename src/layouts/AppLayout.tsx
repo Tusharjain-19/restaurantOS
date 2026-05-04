@@ -6,7 +6,7 @@ import { PinLoginModal } from '@/components/auth/PinLoginModal';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { Menu, Moon, Sun, X } from 'lucide-react';
+import { Menu, Moon, Sun, X, CheckCircle2, ChevronRight, LayoutDashboard, Settings, Users, Utensils, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Suspense } from 'react';
@@ -27,6 +27,8 @@ export default function AppLayout() {
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [dark, toggleDark] = useDarkMode();
   const [showReport, setShowReport] = useState(true);
+  const [showTour, setShowTour] = useState(() => isDemoMode && !localStorage.getItem('ros_tour_completed'));
+  const [tourStep, setTourStep] = useState(0);
 
   useKeyboardShortcuts();
 
@@ -47,6 +49,48 @@ export default function AppLayout() {
     return () => clearInterval(interval);
   }, [lastActivity]);
 
+  const tourSteps = [
+    {
+      title: "Welcome to RestaurantOS",
+      description: "Let's get your restaurant set up. Follow this quick tour to learn the basics.",
+      icon: <LayoutDashboard className="h-6 w-6 text-primary" />,
+      action: () => setTourStep(1)
+    },
+    {
+      title: "1. Configure Your Restaurant",
+      description: "First, head over to Settings to set your restaurant name, address, and currency.",
+      icon: <Settings className="h-6 w-6 text-primary" />,
+      target: "/settings",
+      action: () => { navigate('/settings'); setTourStep(2); }
+    },
+    {
+      title: "2. Manage Your Team",
+      description: "Add your staff members and assign them roles like Manager, Cashier, or Kitchen Staff.",
+      icon: <Users className="h-6 w-6 text-primary" />,
+      target: "/staff",
+      action: () => { navigate('/staff'); setTourStep(3); }
+    },
+    {
+      title: "3. Build Your Menu",
+      description: "Create your food categories and items in the Inventory section.",
+      icon: <Utensils className="h-6 w-6 text-primary" />,
+      target: "/inventory",
+      action: () => { navigate('/inventory'); setTourStep(4); }
+    },
+    {
+      title: "4. Start Taking Orders",
+      description: "You're all set! Go to the POS terminal to start taking orders from customers.",
+      icon: <ShoppingCart className="h-6 w-6 text-primary" />,
+      target: "/pos",
+      action: () => { navigate('/pos'); setTourStep(5); }
+    }
+  ];
+
+  const completeTour = () => {
+    setShowTour(false);
+    localStorage.setItem('ros_tour_completed', 'true');
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -61,10 +105,10 @@ export default function AppLayout() {
               <Menu className="h-5 w-5 text-muted-foreground" />
             </div>
             {isDemoMode && (
-              <div className="hidden sm:flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-xs font-semibold mr-auto ml-4 border border-primary/20">
+              <div className="hidden sm:flex items-center gap-2 bg-zinc-100 text-zinc-900 px-3 py-1.5 rounded-full text-xs font-semibold mr-auto ml-4 border border-zinc-200">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-900"></span>
                 </span>
                 Free 7 Day Trial
               </div>
@@ -75,7 +119,7 @@ export default function AppLayout() {
                 {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <span className="text-sm font-medium text-foreground">{profile?.name ?? 'User'}</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white">
                 {profile?.name?.charAt(0) ?? 'U'}
               </div>
             </div>
@@ -99,6 +143,37 @@ export default function AppLayout() {
         onSwitchUser={() => { setPinModalOpen(false); signOut(); navigate('/login'); }}
       />
 
+      {isDemoMode && showTour && tourStep < tourSteps.length && (
+        <div className="fixed bottom-6 right-6 z-[110] w-full max-w-sm">
+          <div className="bg-card text-card-foreground rounded-2xl shadow-2xl border p-6 animate-in slide-in-from-bottom-4 duration-300">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 border border-zinc-200">
+                {tourSteps[tourStep].icon}
+              </div>
+              <button onClick={completeTour} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <h3 className="text-lg font-bold mb-2">{tourSteps[tourStep].title}</h3>
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              {tourSteps[tourStep].description}
+            </p>
+
+            <div className="flex items-center justify-between">
+              <div className="flex gap-1">
+                {tourSteps.map((_, i) => (
+                  <div key={i} className={`h-1.5 w-1.5 rounded-full transition-all ${i === tourStep ? 'bg-zinc-900 w-4' : 'bg-zinc-200'}`} />
+                ))}
+              </div>
+              <Button size="sm" onClick={tourSteps[tourStep].action} className="gap-2 bg-zinc-900 hover:bg-zinc-800 text-white">
+                {tourStep === tourSteps.length - 1 ? 'Finish' : 'Next Step'} <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isDemoMode && showReport && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-2xl p-6 border relative overflow-hidden">
@@ -114,16 +189,16 @@ export default function AppLayout() {
                 <p className="font-semibold mb-1">Project Details</p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Platform: React + TypeScript + Vite</li>
-                  <li>Role: Admin Demo Account</li>
+                  <li>Role: Admin Demo Account (Default)</li>
                   <li>Status: Free Trial Active (7 Days Remaining)</li>
                   <li>Capabilities: Full Access unlocked for review.</li>
                 </ul>
               </div>
               <p>Thank you for trying out our system! This demo environment allows you to test out all features in a sandbox setting.</p>
-              <p className="font-medium text-primary">Project Link: <a href="https://restaurant-os.demo" className="underline" target="_blank" rel="noreferrer">restaurant-os.demo</a></p>
+              <p className="font-medium text-zinc-900">Project Link: <a href="https://github.com/Tusharjain-19/restaurantOS/blob/main/README.md" className="underline" target="_blank" rel="noreferrer">GitHub README</a></p>
             </div>
             <div className="mt-6 flex justify-end">
-              <Button onClick={() => setShowReport(false)}>Close Report</Button>
+              <Button onClick={() => setShowReport(false)} className="bg-zinc-900 hover:bg-zinc-800 text-white">Close Report</Button>
             </div>
           </div>
         </div>
