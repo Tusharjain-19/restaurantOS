@@ -170,12 +170,19 @@ export default function POS() {
     const price = (variant ? item.price + variant.price_modifier : item.price) + addonPrice;
 
     setOrderItems(prev => {
-      const existing = prev.find(o =>
-        o.item_id === item.id! && o.variant_id === variantId && o.special_instructions === instructions
+      // Look for a pending item with the same specs
+      const existingPending = prev.find(o =>
+        o.item_id === item.id! && 
+        o.variant_id === variantId && 
+        o.special_instructions === instructions &&
+        o.kot_status === 'pending'
       );
-      if (existing) {
-        return prev.map(o => o.id === existing.id ? { ...o, qty: o.qty + 1 } : o);
+
+      if (existingPending) {
+        return prev.map(o => o.id === existingPending.id ? { ...o, qty: o.qty + 1 } : o);
       }
+
+      // If no pending item, create a new one (even if a 'sent' one exists)
       return [...prev, {
         id: crypto.randomUUID(),
         item_id: item.id!,
@@ -192,9 +199,37 @@ export default function POS() {
   }, []);
 
   const updateQty = (id: string, delta: number) => {
-    setOrderItems(prev => prev.map(o =>
-      o.id === id ? { ...o, qty: Math.max(1, o.qty + delta) } : o
-    ));
+    setOrderItems(prev => {
+      const item = prev.find(o => o.id === id);
+      if (!item) return prev;
+
+      // If increasing quantity of a 'sent' item, create/update a 'pending' addon instead
+      if (delta > 0 && item.kot_status === 'sent') {
+        const existingPending = prev.find(o =>
+          o.item_id === item.item_id &&
+          o.variant_id === item.variant_id &&
+          o.special_instructions === item.special_instructions &&
+          o.kot_status === 'pending'
+        );
+
+        if (existingPending) {
+          return prev.map(o => o.id === existingPending.id ? { ...o, qty: o.qty + 1 } : o);
+        } else {
+          return [...prev, {
+            ...item,
+            id: crypto.randomUUID(),
+            qty: 1,
+            kot_status: 'pending',
+            is_addon: true
+          }];
+        }
+      }
+
+      // Normal behavior for pending items or decreasing quantity
+      return prev.map(o =>
+        o.id === id ? { ...o, qty: Math.max(1, o.qty + delta) } : o
+      );
+    });
   };
 
   const removeItem = (id: string) => {
