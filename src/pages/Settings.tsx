@@ -153,6 +153,28 @@ function RestaurantSettings() {
         <Button onClick={handleSave} className="gap-2">
           <Save className="h-4 w-4" /> Save Profile
         </Button>
+
+        <Separator />
+        
+        <div className="pt-4">
+          <h4 className="text-sm font-semibold text-destructive mb-1">Danger Zone</h4>
+          <p className="text-xs text-muted-foreground mb-4">Resetting the database will delete all current data and restore the default demo items and tables.</p>
+          <Button 
+            variant="outline" 
+            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground gap-2"
+            onClick={async () => {
+              if (confirm('Are you sure? This will delete all your current work and restore demo data.')) {
+                const { clearAllData, seedDatabase } = await import('@/lib/db');
+                await clearAllData();
+                await seedDatabase();
+                toast.success('Database reset successfully! Reloading...');
+                setTimeout(() => window.location.reload(), 1000);
+              }
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Reset Demo Data
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

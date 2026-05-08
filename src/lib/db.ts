@@ -534,11 +534,41 @@ export async function seedDatabase() {
   }
   await db.restaurantTables.bulkAdd(tableSeeds);
 
-  // Seed menu categories (Basic structure)
+  // Seed menu categories
   await db.menuCategories.bulkAdd([
-    { name: 'Starters', display_order: 0, is_active: true, item_count: 0 },
-    { name: 'Main Course', display_order: 1, is_active: true, item_count: 0 },
-    { name: 'Beverages', display_order: 4, is_active: true, item_count: 0 },
+    { name: 'Starters', display_order: 0, is_active: true, item_count: 8 },
+    { name: 'Main Course', display_order: 1, is_active: true, item_count: 8 },
+    { name: 'Beverages', display_order: 2, is_active: true, item_count: 4 },
+  ]);
+
+  // Seed menu items (20 items)
+  const now = new Date();
+  await db.menuItems.bulkAdd([
+    // Starters (Category ID 1)
+    { category_id: 1, name: 'Paneer Tikka', price: 249, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+    { category_id: 1, name: 'Chicken 65', price: 299, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 12, created_at: now, updated_at: now },
+    { category_id: 1, name: 'Crispy Corn', price: 189, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 10, created_at: now, updated_at: now },
+    { category_id: 1, name: 'Spring Rolls', price: 169, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+    { category_id: 1, name: 'Fish Fingers', price: 349, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 12, created_at: now, updated_at: now },
+    { category_id: 1, name: 'Mushroom Duplex', price: 229, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 18, created_at: now, updated_at: now },
+    { category_id: 1, name: 'Chicken Wings', price: 279, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+    { category_id: 1, name: 'Veg Manchurian', price: 199, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+
+    // Main Course (Category ID 2)
+    { category_id: 2, name: 'Butter Chicken', price: 389, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 20, created_at: now, updated_at: now },
+    { category_id: 2, name: 'Dal Makhani', price: 269, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 25, created_at: now, updated_at: now },
+    { category_id: 2, name: 'Chicken Biryani', price: 349, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+    { category_id: 2, name: 'Paneer Butter Masala', price: 319, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+    { category_id: 2, name: 'Mutton Rogan Josh', price: 499, item_type: 'non-veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 30, created_at: now, updated_at: now },
+    { category_id: 2, name: 'Veg Pulao', price: 219, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+    { category_id: 2, name: 'Garlic Naan', price: 55, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 5, created_at: now, updated_at: now },
+    { category_id: 2, name: 'Mix Veg', price: 249, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 15, created_at: now, updated_at: now },
+
+    // Beverages (Category ID 3)
+    { category_id: 3, name: 'Fresh Lime Soda', price: 89, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 5, created_at: now, updated_at: now },
+    { category_id: 3, name: 'Iced Tea', price: 119, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 5, created_at: now, updated_at: now },
+    { category_id: 3, name: 'Cold Coffee', price: 149, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 8, created_at: now, updated_at: now },
+    { category_id: 3, name: 'Mango Lassi', price: 129, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5, preparation_time_mins: 5, created_at: now, updated_at: now }
   ]);
 
   // Seed tax config
@@ -572,4 +602,33 @@ export async function seedDatabase() {
   ]);
 
   console.log('✅ Database seeded successfully');
+}
+
+export async function clearAllData() {
+  await Promise.all([
+    db.restaurant.clear(),
+    db.floors.clear(),
+    db.restaurantTables.clear(),
+    db.menuCategories.clear(),
+    db.menuItems.clear(),
+    db.taxConfig.clear(),
+    db.paymentMethods.clear(),
+    db.staff.clear(),
+    db.orders.clear(),
+    db.orderItems.clear(),
+    db.kots.clear(),
+    db.bills.clear(),
+    db.ingredients.clear(),
+    db.recipes.clear(),
+    db.vendors.clear(),
+    db.purchaseOrders.clear(),
+    db.wastageLogs.clear(),
+    db.customers.clear(),
+    db.reservations.clear(),
+    db.waitlist.clear(),
+    db.auditLogs.clear(),
+    db.printers.clear(),
+    db.settings.clear(),
+  ]);
+  console.log('🗑️ All data cleared successfully');
 }

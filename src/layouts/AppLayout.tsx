@@ -52,37 +52,79 @@ export default function AppLayout() {
   const tourSteps = [
     {
       title: "Welcome to RestaurantOS",
-      description: "Let's get your restaurant set up. Follow this quick tour to learn the basics.",
+      description: "You're now in the Demo Hub. We've pre-loaded 20+ menu items and 15 tables across 3 floors to help you explore. Let's take a quick tour!",
       icon: <LayoutDashboard className="h-6 w-6 text-primary" />,
-      action: () => setTourStep(1)
+      action: () => { navigate('/dashboard'); setTourStep(1); }
     },
     {
-      title: "1. Configure Your Restaurant",
-      description: "First, head over to Settings to set your restaurant name, address, and currency.",
-      icon: <Settings className="h-6 w-6 text-primary" />,
-      target: "/settings",
-      action: () => { navigate('/settings'); setTourStep(2); }
+      title: "Real-time Dashboard",
+      description: "Monitor your restaurant's performance at a glance. Track sales, order counts, and top-selling items in real-time.",
+      icon: <LayoutDashboard className="h-6 w-6 text-primary" />,
+      target: "/dashboard",
+      action: () => { navigate('/pos'); setTourStep(2); }
     },
     {
-      title: "2. Manage Your Team",
-      description: "Add your staff members and assign them roles like Manager, Cashier, or Kitchen Staff.",
-      icon: <Users className="h-6 w-6 text-primary" />,
-      target: "/staff",
-      action: () => { navigate('/staff'); setTourStep(3); }
-    },
-    {
-      title: "3. Build Your Menu",
-      description: "Create your food categories and items in the Inventory section.",
-      icon: <Utensils className="h-6 w-6 text-primary" />,
-      target: "/inventory",
-      action: () => { navigate('/inventory'); setTourStep(4); }
-    },
-    {
-      title: "4. Start Taking Orders",
-      description: "You're all set! Go to the POS terminal to start taking orders from customers.",
+      title: "Point of Sale (POS)",
+      description: "This is where the magic happens. Take orders, customize items with variants, and send KOTs to the kitchen instantly.",
       icon: <ShoppingCart className="h-6 w-6 text-primary" />,
       target: "/pos",
-      action: () => { navigate('/pos'); setTourStep(5); }
+      action: () => { navigate('/tables'); setTourStep(3); }
+    },
+    {
+      title: "Table Management",
+      description: "Visualize your restaurant floor. Manage table occupancy, reservations, and billing status across multiple floors.",
+      icon: <Users className="h-6 w-6 text-primary" />,
+      target: "/tables",
+      action: () => { navigate('/kitchen'); setTourStep(4); }
+    },
+    {
+      title: "Kitchen Display System",
+      description: "Keep your chefs organized. Track preparation times, manage KOT priorities, and notify servers when food is ready.",
+      icon: <Utensils className="h-6 w-6 text-primary" />,
+      target: "/kitchen",
+      action: () => { navigate('/billing'); setTourStep(5); }
+    },
+    {
+      title: "Billing & Invoicing",
+      description: "Quickly generate bills, apply discounts, and process multiple payment methods including UPI and Cards.",
+      icon: <CheckCircle2 className="h-6 w-6 text-primary" />,
+      target: "/billing",
+      action: () => { navigate('/inventory'); setTourStep(6); }
+    },
+    {
+      title: "Menu & Inventory",
+      description: "Manage your 20+ pre-loaded items here. Add new dishes, set prices, and track ingredient stock levels.",
+      icon: <Utensils className="h-6 w-6 text-primary" />,
+      target: "/inventory",
+      action: () => { navigate('/reports'); setTourStep(7); }
+    },
+    {
+      title: "Advanced Analytics",
+      description: "Dive deep into your data. Filter reports by date, category, or payment method to gain business insights.",
+      icon: <LayoutDashboard className="h-6 w-6 text-primary" />,
+      target: "/reports",
+      action: () => { navigate('/staff'); setTourStep(8); }
+    },
+    {
+      title: "Staff Management",
+      description: "Manage your team and their access levels. Each staff member gets a unique PIN for secure terminal login.",
+      icon: <Users className="h-6 w-6 text-primary" />,
+      target: "/staff",
+      action: () => { navigate('/customers'); setTourStep(9); }
+    },
+    {
+      title: "Customer Loyalty",
+      description: "Build relationships with your guests. Track visit history, spending patterns, and manage loyalty points.",
+      icon: <Users className="h-6 w-6 text-primary" />,
+      target: "/customers",
+      action: () => { navigate('/settings'); setTourStep(10); }
+    },
+    {
+      title: "Global Settings",
+      description: "Finalize your setup. Configure taxes, printers, and restaurant branding for professional receipts.",
+      icon: <Settings className="h-6 w-6 text-primary" />,
+      target: "/settings",
+      action: () => { completeTour(); }
     }
   ];
 

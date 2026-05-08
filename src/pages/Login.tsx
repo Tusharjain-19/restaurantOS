@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Mail, Lock, Eye, EyeOff, LogIn, Chrome, CheckCircle2, ArrowRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,21 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const { signIn, signInWithGoogle, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const isDemo = searchParams.get('demo') === 'true';
+    if (isDemo) {
+      const autoLogin = async () => {
+        const { error } = await signIn('admin@restaurant.com', 'password123');
+        if (!error) {
+          toast.success('Welcome to Demo Hub!');
+          navigate('/', { replace: true });
+        }
+      };
+      autoLogin();
+    }
+  }, [searchParams, signIn, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,13 +205,21 @@ export default function Login() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setEmail('admin@restaurant.com');
-                  setPassword('password123');
+                onClick={async () => {
+                  const { error } = await signIn('admin@restaurant.com', 'password123');
+                  if (error) {
+                    toast.error(error);
+                  } else {
+                    toast.success('Welcome to Demo Hub!');
+                    navigate('/');
+                  }
                 }}
-                className="w-full h-12 border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 transition-all font-semibold rounded-lg flex items-center justify-center gap-2"
+                className="w-full h-12 border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 transition-all font-semibold rounded-lg flex items-center justify-center gap-2 group"
               >
-                Try Demo Account
+                <div className="flex items-center gap-2">
+                  Activate Demo Hub
+                  <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                </div>
               </Button>
             </div>
           </form>

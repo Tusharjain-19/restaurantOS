@@ -158,13 +158,54 @@ export default function Activation() {
                     <p>Activation requires a one-time internet connection. After activation, the software runs 100% offline.</p>
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white shadow-lg h-12 text-base font-semibold"
-                    disabled={loading || licenseKey.length < 5}
-                  >
-                    {loading ? 'Verifying License...' : 'Activate Software'}
-                  </Button>
+                  <div className="space-y-4">
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 text-white shadow-lg h-12 text-base font-semibold"
+                      disabled={loading || licenseKey.length < 5}
+                    >
+                      {loading ? 'Verifying License...' : 'Activate Software'}
+                    </Button>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-slate-800" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-slate-900 px-2 text-slate-500 font-medium tracking-widest">Or test the system</span>
+                      </div>
+                    </div>
+
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      onClick={async () => {
+                        setLoading(true);
+                        try {
+                          // Bypass activation
+                          localStorage.setItem('ros_activated', 'true');
+                          
+                          // Use the auth store directly or handle via signIn
+                          // Since we don't have useAuth here, we can just navigate to login 
+                          // and have the login page handle it, or we can use useAuth hook if we add it.
+                          // Let's add useAuth to Activation.tsx if it's not there.
+                          // Actually, we can just redirect to login with a query param or just rely on the user clicking demo on login page.
+                          // But the user said "directy enter into hub".
+                          
+                          // Let's add useAuth to this component.
+                          navigate('/login?demo=true');
+                        } catch (err) {
+                          toast.error('Demo activation failed');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="w-full h-12 text-slate-400 hover:text-white hover:bg-white/5 transition-all font-semibold flex items-center justify-center gap-2"
+                    >
+                      <ShieldCheck className="h-5 w-5" />
+                      Try Demo Hub
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </>
