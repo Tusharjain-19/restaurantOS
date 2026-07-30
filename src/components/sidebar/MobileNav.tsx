@@ -22,6 +22,20 @@ export function MobileNav() {
     <nav className="flex border-t bg-card">
       {visibleItems.map((item) => {
         const active = location.pathname.startsWith(item.url);
+        if (item.title === 'Kitchen') {
+          return (
+            <a
+              key={item.url}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-1 flex-col items-center gap-1 py-2 text-xs text-muted-foreground transition-colors"
+            >
+              <item.icon className="h-5 w-5" />
+              <span>{item.title}</span>
+            </a>
+          );
+        }
         return (
           <RouterNavLink
             key={item.url}
