@@ -1,0 +1,13 @@
+{
+  "name": "restaurant-hub-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root workspace proxy for restaurant-hub-main",
+  "scripts": {
+    "dev": "npm --prefix restaurant-hub-main run dev",
+    "build": "npm --prefix restaurant-hub-main run build",
+    "preview": "npm --prefix restaurant-hub-main run preview",
+    "test": "npm --prefix restaurant-hub-main run test",
+    "lint": "npm --prefix restaurant-hub-main run lint"
+  }
+}

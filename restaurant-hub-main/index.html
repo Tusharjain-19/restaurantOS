@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RestaurantOS — Restaurant Management System</title>
+    <meta name="description" content="RestaurantOS is a comprehensive restaurant management system for efficient operations, order management, KOT tracking, and billing." />
+    <meta name="author" content="RestaurantOS" />
+
+    <!-- Preconnect to Google Fonts for faster font loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" /></noscript>
+
+    <!-- Preconnect to Supabase for faster API calls -->
+    <link rel="dns-prefetch" href="https://uqvabnyfvgvcwrqbmxts.supabase.co" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="RestaurantOS — Restaurant Management System" />
+    <meta property="og:description" content="RestaurantOS is a comprehensive restaurant management system for efficient operations, order management, KOT tracking, and billing." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RestaurantOS — Restaurant Management System" />
+    <meta name="twitter:description" content="RestaurantOS is a comprehensive restaurant management system for efficient operations, order management, KOT tracking, and billing." />
+
+    <style>
+      /* Critical CSS — shows loading spinner instantly before JS loads */
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #f8f8fa;
+      }
+      #root:empty::after {
+        content: "";
+        width: 36px;
+        height: 36px;
+        border: 3px solid #e5e5ea;
+        border-top-color: #2b4c7e;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
