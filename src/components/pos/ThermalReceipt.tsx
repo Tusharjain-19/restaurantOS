@@ -64,13 +64,27 @@ export function ThermalReceipt({ bill, restaurant, onClose }: Props) {
             }
           }
           
-          @keyframes slideDownBill {
+          @keyframes stepperPrint {
             0% { transform: translateY(-100%); }
+            12% { transform: translateY(-85%); }
+            24% { transform: translateY(-70%); }
+            36% { transform: translateY(-55%); }
+            48% { transform: translateY(-40%); }
+            60% { transform: translateY(-25%); }
+            72% { transform: translateY(-12%); }
+            85% { transform: translateY(-5%); }
             100% { transform: translateY(0); }
           }
           
           .animate-bill-print {
-            animation: slideDownBill 1.8s ease-out forwards;
+            animation: stepperPrint 2.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          }
+          
+          .serrated-edge {
+            clip-path: polygon(
+              0% 0%, 100% 0%, 100% calc(100% - 6px),
+              98% 100%, 96% calc(100% - 6px), 94% 100%, 92% calc(100% - 6px), 90% 100%, 88% calc(100% - 6px), 86% 100%, 84% calc(100% - 6px), 82% 100%, 80% calc(100% - 6px), 78% 100%, 76% calc(100% - 6px), 74% 100%, 72% calc(100% - 6px), 70% 100%, 68% calc(100% - 6px), 66% 100%, 64% calc(100% - 6px), 62% 100%, 60% calc(100% - 6px), 58% 100%, 56% calc(100% - 6px), 54% 100%, 52% calc(100% - 6px), 50% 100%, 48% calc(100% - 6px), 46% 100%, 44% calc(100% - 6px), 42% 100%, 40% calc(100% - 6px), 38% 100%, 36% calc(100% - 6px), 34% 100%, 32% calc(100% - 6px), 30% 100%, 28% calc(100% - 6px), 26% 100%, 24% calc(100% - 6px), 22% 100%, 20% calc(100% - 6px), 18% 100%, 16% calc(100% - 6px), 14% 100%, 12% calc(100% - 6px), 10% 100%, 8% calc(100% - 6px), 6% 100%, 4% calc(100% - 6px), 2% 100%, 0% calc(100% - 6px)
+            );
           }
         `}
       </style>
@@ -86,7 +100,7 @@ export function ThermalReceipt({ bill, restaurant, onClose }: Props) {
             
             {/* Paper Output Area */}
             <div style={{ width: outputScreen }} className="h-[400px] relative overflow-hidden bg-transparent z-10 flex justify-center">
-                <div className="absolute top-0 w-full animate-bill-print bg-white text-black p-4 text-[11px] font-mono shadow-2xl pt-2 pb-8 border-b border-gray-200">
+                <div className="absolute top-0 w-full animate-bill-print bg-white text-black p-4 text-[11px] font-mono shadow-[0_15px_35px_rgba(0,0,0,0.4)] pt-2 pb-8 serrated-edge">
                     <ReceiptContent bill={bill} restaurant={restaurant} is58={is58} />
                 </div>
             </div>
