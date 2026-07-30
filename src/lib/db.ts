@@ -10,10 +10,11 @@ class RestaurantDB extends Dexie {
   customers!: Table<any, string>;
   restaurantTables!: Table<any, string>;
   floors!: Table<any, string>;
+  printers!: Table<any, string>;
 
   constructor() {
     super('RestaurantOS');
-    this.version(1).stores({
+    this.version(2).stores({
       menuItems: 'id, category_id, name',
       menuCategories: 'id, restaurant_id, name',
       orders: 'id, restaurant_id, status, created_at',
@@ -22,6 +23,7 @@ class RestaurantDB extends Dexie {
       customers: 'id, restaurant_id, phone, name',
       restaurantTables: 'id, floor_id, number',
       floors: 'id, restaurant_id, name',
+      printers: 'id, restaurant_id, name, type',
     });
   }
 }
