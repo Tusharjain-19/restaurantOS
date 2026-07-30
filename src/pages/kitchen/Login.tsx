@@ -73,7 +73,7 @@ export default function KitchenLogin() {
           </div>
           {error && <p className="text-center text-sm text-destructive">{error}</p>}
           <div className="pt-2 text-center text-xs text-muted-foreground">
-            Manager? <Link to="/login" className="text-primary font-medium hover:underline">Sign in with email</Link>
+            Manager? <Link to="/dashboard" className="text-primary font-medium hover:underline">Go to Dashboard</Link>
           </div>
         </div>
       </div>

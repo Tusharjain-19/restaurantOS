@@ -11,10 +11,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import AppLayout from "@/layouts/AppLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const Login = lazy(() => import("@/pages/Login"));
-const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
-const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const POS = lazy(() => import("@/pages/POS"));
 const Tables = lazy(() => import("@/pages/Tables"));
@@ -27,7 +23,7 @@ const SettingsPage = lazy(() => import("@/pages/Settings"));
 const Customers = lazy(() => import("@/pages/Customers"));
 const CustomerProfile = lazy(() => import("@/pages/CustomerProfile"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
-const SuperAdmin = lazy(() => import("@/pages/SuperAdmin"));
+const About = lazy(() => import("@/pages/About"));
 
 const KitchenLogin = lazy(() => import("@/pages/kitchen/Login"));
 
@@ -52,13 +48,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/onboarding" element={
-                <ProtectedRoute><Onboarding /></ProtectedRoute>
-              } />
+             <Routes>
+              <Route path="/about" element={<About />} />
 
               <Route path="/" element={
                 <ProtectedRoute><AppLayout /></ProtectedRoute>
@@ -79,7 +70,6 @@ const App = () => (
 
               <Route path="/kitchen/login" element={<KitchenLogin />} />
 
-              <Route path="super-admin" element={<SuperAdmin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

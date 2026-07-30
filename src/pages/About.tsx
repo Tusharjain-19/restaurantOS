@@ -53,7 +53,7 @@ export default function About() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/dashboard')}
               className="hover:bg-zinc-100 transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -63,10 +63,10 @@ export default function About() {
             </div>
           </div>
           <Button 
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/dashboard')}
             className="bg-zinc-950 text-white hover:bg-zinc-900"
           >
-            Go to Login
+            Go to Dashboard
           </Button>
         </div>
       </header>
@@ -182,10 +182,10 @@ export default function About() {
             </Button>
             <Button 
               variant="outline"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/dashboard')}
               className="h-12 px-8 rounded-xl font-bold border-zinc-200"
             >
-              Back to Login
+              Back to App
             </Button>
           </div>
         </div>

@@ -28,11 +28,30 @@ interface AuthState {
   fetchProfile: (userId: string) => Promise<UserProfile | null>;
 }
 
+const defaultGuestUser = {
+  id: 'guest-id',
+  email: 'guest@restaurantos.test',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+};
+
+const defaultGuestProfile = {
+  id: 'guest-id',
+  email: 'guest@restaurantos.test',
+  name: 'Guest Merchant',
+  role: 'admin' as UserRole,
+  avatar_url: null,
+  pin_hash: null,
+  restaurant_id: 'guest-restaurant-id',
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  profile: null,
-  loading: true,
-  initialized: false,
+  user: defaultGuestUser as any,
+  profile: defaultGuestProfile as any,
+  loading: false,
+  initialized: true,
 
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),

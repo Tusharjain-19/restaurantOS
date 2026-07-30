@@ -10,6 +10,7 @@ import {
   type MockMenuItem,
 } from '@/lib/mock-data';
 import { toast } from 'sonner';
+import { db } from '@/lib/db';
 
 // Helper to check if a database table returns no data
 const isEmpty = (arr: any) => !arr || arr.length === 0;
@@ -19,6 +20,24 @@ export function useRestaurant(restaurantId: string | null | undefined) {
     queryKey: ['restaurant', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return null;
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = localStorage.getItem('guest_restaurant_profile');
+        const defaultProfile = {
+          id: 'guest-restaurant-id',
+          name: 'Ninja Cafe & Restaurant',
+          phone: '+91 98765 43210',
+          email: 'hello@ninjacafe.com',
+          website: 'www.ninjacafe.com',
+          address_1: '123 Gourmet Street',
+          address_2: 'Food Park, Sector 5',
+          city: 'Bengaluru',
+          state: 'Karnataka',
+          pin: '560001',
+          gstin: '29AAAAA0000A1Z5',
+          fssai: '12345678901234',
+        };
+        return local ? { ...defaultProfile, ...JSON.parse(local) } : defaultProfile;
+      }
       const { data, error } = await supabase
         .from('restaurants')
         .select('*')
@@ -37,6 +56,15 @@ export function useFloors(restaurantId: string | null | undefined) {
     queryKey: ['floors', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return MOCK_FLOORS;
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = await db.floors.toArray();
+        if (isEmpty(local)) {
+          const prepop = MOCK_FLOORS.map(f => ({ ...f, restaurant_id: restaurantId }));
+          await db.floors.bulkAdd(prepop);
+          return prepop;
+        }
+        return local;
+      }
       const { data, error } = await supabase
         .from('floors')
         .select('*')
@@ -58,6 +86,15 @@ export function useTables(restaurantId: string | null | undefined) {
     queryKey: ['tables', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return MOCK_TABLES;
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = await db.restaurantTables.toArray();
+        if (isEmpty(local)) {
+          const prepop = MOCK_TABLES;
+          await db.restaurantTables.bulkAdd(prepop);
+          return prepop;
+        }
+        return local;
+      }
       const { data: floors } = await supabase
         .from('floors')
         .select('id')
@@ -94,6 +131,15 @@ export function useMenuCategories(restaurantId: string | null | undefined) {
     queryKey: ['menu_categories', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return MOCK_CATEGORIES;
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = await db.menuCategories.toArray();
+        if (isEmpty(local)) {
+          const prepop = MOCK_CATEGORIES.map(c => ({ ...c, restaurant_id: restaurantId }));
+          await db.menuCategories.bulkAdd(prepop);
+          return prepop;
+        }
+        return local;
+      }
       const { data, error } = await supabase
         .from('menu_categories')
         .select('*')
@@ -115,6 +161,24 @@ export function useMenuItems(restaurantId: string | null | undefined) {
     queryKey: ['menu_items', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return MOCK_MENU_ITEMS;
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = await db.menuItems.toArray();
+        if (isEmpty(local)) {
+          const prepop = MOCK_MENU_ITEMS;
+          await db.menuItems.bulkAdd(prepop);
+          return prepop;
+        }
+        return local.map((item: any) => ({
+          id: item.id,
+          category_id: item.category_id,
+          name: item.name,
+          price: Number(item.price),
+          item_type: (item.item_type || 'veg').toLowerCase() as any,
+          is_available: item.is_available ?? true,
+          tax_rate: Number(item.tax_rate || 5),
+          description: item.description || '',
+        }));
+      }
       const { data: cats } = await supabase
         .from('menu_categories')
         .select('id')
@@ -153,6 +217,15 @@ export function useTaxConfig(restaurantId: string | null | undefined) {
     queryKey: ['tax_config', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return { service_charge_enabled: false, service_charge_pct: 0, packaging_charge: 0, round_off: 'nearest' };
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = localStorage.getItem('guest_tax_config');
+        if (!local) {
+          const initial = { service_charge_enabled: false, service_charge_pct: 0, packaging_charge: 0, round_off: 'nearest' };
+          localStorage.setItem('guest_tax_config', JSON.stringify(initial));
+          return initial;
+        }
+        return JSON.parse(local);
+      }
       const { data, error } = await supabase
         .from('tax_config')
         .select('*')
@@ -179,6 +252,26 @@ export function usePrinters(restaurantId: string | null | undefined) {
     queryKey: ['printers', restaurantId],
     queryFn: async () => {
       if (!restaurantId) return [];
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = localStorage.getItem('guest_printers');
+        if (!local) {
+          const initial = [
+            {
+              id: 'printer-1',
+              name: 'Main Thermal Billing Printer',
+              type: 'Bill',
+              connection: 'USB',
+              ipAddress: '',
+              paperWidth: '80mm',
+              isDefault: true,
+              hasCashDrawer: true,
+            }
+          ];
+          localStorage.setItem('guest_printers', JSON.stringify(initial));
+          return initial;
+        }
+        return JSON.parse(local);
+      }
       const { data, error } = await supabase
         .from('printers')
         .select('*')
@@ -206,6 +299,10 @@ export function useUpdateRestaurant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: Record<string, any> }) => {
+      if (id === 'guest-restaurant-id') {
+        localStorage.setItem('guest_restaurant_profile', JSON.stringify(payload));
+        return;
+      }
       const { error } = await supabase
         .from('restaurants')
         .update(payload)
@@ -226,6 +323,10 @@ export function useUpsertTaxConfig() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ restaurantId, payload }: { restaurantId: string; payload: Record<string, any> }) => {
+      if (restaurantId === 'guest-restaurant-id') {
+        localStorage.setItem('guest_tax_config', JSON.stringify(payload));
+        return;
+      }
       const { error } = await supabase
         .from('tax_config')
         .upsert({
@@ -251,6 +352,19 @@ export function useSavePrinter() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, restaurantId, payload }: { id?: string; restaurantId: string; payload: Record<string, any> }) => {
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = localStorage.getItem('guest_printers');
+        const printers = local ? JSON.parse(local) : [];
+        const newPrinter = { ...payload, id: id || crypto.randomUUID() };
+        let updated;
+        if (id) {
+          updated = printers.map((p: any) => p.id === id ? newPrinter : p);
+        } else {
+          updated = [...printers, newPrinter];
+        }
+        localStorage.setItem('guest_printers', JSON.stringify(updated));
+        return;
+      }
       const printerRow = {
         restaurant_id: restaurantId,
         name: payload.name,
@@ -288,7 +402,14 @@ export function useSavePrinter() {
 export function useDeletePrinter() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string; restaurantId: string }) => {
+    mutationFn: async ({ id, restaurantId }: { id: string; restaurantId: string }) => {
+      if (restaurantId === 'guest-restaurant-id') {
+        const local = localStorage.getItem('guest_printers');
+        const printers = local ? JSON.parse(local) : [];
+        const updated = printers.filter((p: any) => p.id !== id);
+        localStorage.setItem('guest_printers', JSON.stringify(updated));
+        return;
+      }
       const { error } = await supabase
         .from('printers')
         .delete()
@@ -309,6 +430,17 @@ export function useSaveCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, restaurantId, payload }: { id?: string; restaurantId: string; payload: Record<string, any> }) => {
+      if (restaurantId === 'guest-restaurant-id') {
+        const catRow = {
+          id: id || crypto.randomUUID(),
+          restaurant_id: restaurantId,
+          name: payload.name,
+          type: payload.type || 'both',
+          is_active: payload.is_active ?? true,
+        };
+        await db.menuCategories.put(catRow);
+        return;
+      }
       const catRow = {
         restaurant_id: restaurantId,
         name: payload.name,
@@ -342,7 +474,16 @@ export function useSaveCategory() {
 export function useDeleteCategory() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string; restaurantId: string }) => {
+    mutationFn: async ({ id, restaurantId }: { id: string; restaurantId: string }) => {
+      if (restaurantId === 'guest-restaurant-id') {
+        await db.menuCategories.delete(id);
+        // Also delete items in this category
+        const items = await db.menuItems.where('category_id').equals(id).toArray();
+        for (const item of items) {
+          await db.menuItems.delete(item.id);
+        }
+        return;
+      }
       const { error } = await supabase
         .from('menu_categories')
         .delete()
@@ -364,6 +505,20 @@ export function useSaveMenuItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, restaurantId, payload }: { id?: string; restaurantId: string; payload: Record<string, any> }) => {
+      if (restaurantId === 'guest-restaurant-id') {
+        const itemRow = {
+          id: id || crypto.randomUUID(),
+          category_id: payload.category_id,
+          restaurant_id: restaurantId,
+          name: payload.name,
+          price: Number(payload.price),
+          item_type: payload.item_type || 'Veg',
+          is_available: payload.is_available ?? true,
+          description: payload.description || '',
+        };
+        await db.menuItems.put(itemRow);
+        return;
+      }
       const itemRow = {
         category_id: payload.category_id,
         restaurant_id: restaurantId,
@@ -401,7 +556,11 @@ export function useSaveMenuItem() {
 export function useDeleteMenuItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }: { id: string; restaurantId: string }) => {
+    mutationFn: async ({ id, restaurantId }: { id: string; restaurantId: string }) => {
+      if (restaurantId === 'guest-restaurant-id') {
+        await db.menuItems.delete(id);
+        return;
+      }
       const { error } = await supabase
         .from('menu_items')
         .delete()

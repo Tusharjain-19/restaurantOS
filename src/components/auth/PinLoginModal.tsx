@@ -89,8 +89,8 @@ export function PinLoginModal({ open, onClose, onSwitchUser }: PinLoginModalProp
           ))}
         </div>
 
-        <Button variant="ghost" className="mt-4 w-full text-muted-foreground" onClick={onSwitchUser}>
-          Switch User
+        <Button variant="ghost" className="mt-4 w-full text-destructive" onClick={onSwitchUser}>
+          Reset App Data
         </Button>
       </div>
     </div>

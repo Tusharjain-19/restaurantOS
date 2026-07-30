@@ -382,7 +382,7 @@ export default function Billing() {
 
             {/* Receipt Paper Sliding Down */}
             <div className={cn(
-              "w-[220px] bg-white text-gray-800 p-4 font-mono text-[9px] shadow-2xl border-x border-gray-100 z-10 transition-all duration-[2000ms] ease-out origin-top",
+              "w-[220px] bg-white text-gray-800 p-4 font-mono text-[9px] shadow-2xl border-x border-gray-100 z-10 transition-all duration-2000 ease-out origin-top",
               printStage === 'feeding' ? "scale-y-0 opacity-0 max-h-0" : "scale-y-100 opacity-100 max-h-[450px]",
               printStage === 'torn' && "translate-y-[20px] rotate-2 opacity-0 duration-700 ease-in"
             )}>

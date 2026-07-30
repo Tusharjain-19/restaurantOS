@@ -6,10 +6,11 @@ import { PinLoginModal } from '@/components/auth/PinLoginModal';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { Menu, Moon, Sun, LogOut } from 'lucide-react';
+import { Menu, Moon, Sun, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Suspense } from 'react';
+import { db } from '@/lib/db';
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -21,7 +22,7 @@ function useDarkMode() {
 }
 
 export default function AppLayout() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
@@ -73,12 +74,15 @@ export default function AppLayout() {
                 size="icon"
                 className="h-8 w-8 text-destructive hover:bg-destructive/10"
                 onClick={async () => {
-                  await signOut();
-                  navigate('/login');
+                  if (confirm("Are you sure you want to reset all local data? This will clear all orders, menu items, settings, and reload the app.")) {
+                    localStorage.clear();
+                    await db.delete();
+                    window.location.reload();
+                  }
                 }}
-                title="Logout"
+                title="Reset Database"
               >
-                <LogOut className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           </header>
@@ -98,7 +102,14 @@ export default function AppLayout() {
       <PinLoginModal
         open={pinModalOpen}
         onClose={() => { setPinModalOpen(false); resetActivity(); }}
-        onSwitchUser={() => { setPinModalOpen(false); signOut(); navigate('/login'); }}
+        onSwitchUser={async () => {
+          if (confirm("Are you sure you want to reset all local data? This will clear all orders and reload.")) {
+            setPinModalOpen(false);
+            localStorage.clear();
+            await db.delete();
+            window.location.reload();
+          }
+        }}
       />
     </SidebarProvider>
   );

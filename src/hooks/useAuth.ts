@@ -2,6 +2,26 @@ import { useEffect } from 'react';
 import { useAuthStore, type UserRole } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 
+const defaultGuestUser = {
+  id: 'guest-id',
+  email: 'guest@restaurantos.test',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+};
+
+const defaultGuestProfile = {
+  id: 'guest-id',
+  email: 'guest@restaurantos.test',
+  name: 'Guest Merchant',
+  role: 'admin' as UserRole,
+  avatar_url: null,
+  pin_hash: null,
+  restaurant_id: 'guest-restaurant-id',
+};
+
+
 export function useAuth() {
   const store = useAuthStore();
 
@@ -14,8 +34,9 @@ export function useAuth() {
           store.setUser(session.user);
           await store.fetchProfile(session.user.id);
         } else {
-          store.setUser(null);
-          store.setProfile(null);
+          // Keep default guest state instead of setting to null
+          store.setUser(store.user || defaultGuestUser as any);
+          store.setProfile(store.profile || defaultGuestProfile as any);
         }
         store.setLoading(false);
         store.setInitialized(true);
@@ -26,6 +47,10 @@ export function useAuth() {
       if (session?.user) {
         store.setUser(session.user);
         await store.fetchProfile(session.user.id);
+      } else {
+        // Keep default guest state instead of setting to null
+        store.setUser(store.user || defaultGuestUser as any);
+        store.setProfile(store.profile || defaultGuestProfile as any);
       }
       store.setLoading(false);
       store.setInitialized(true);
