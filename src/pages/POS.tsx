@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Minus, Plus, Trash2, Send, Pause, FileText, X, Users } from 'lucide-react';
+import { Search, Minus, Plus, Trash2, Send, Pause, FileText, X, Users, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +14,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { useFloors, useTables, useMenuCategories, useMenuItems } from '@/hooks/useRestaurantData';
+import { useFloors, useTables, useMenuCategories, useMenuItems, useRestaurant } from '@/hooks/useRestaurantData';
 import {
   type MockMenuItem, type OrderItem,
 } from '@/lib/mock-data';
+import { db } from '@/lib/db';
+import { ThermalReceipt } from '@/components/pos/ThermalReceipt';
 
 type OrderType = 'dine_in' | 'takeaway' | 'delivery';
 
@@ -47,6 +52,12 @@ export default function POS() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [tokenNumber] = useState(Math.floor(Math.random() * 900) + 100);
+
+  const [showPayment, setShowPayment] = useState(false);
+  const [printingBill, setPrintingBill] = useState<any>(null);
+  const [showUpiQr, setShowUpiQr] = useState(false);
+
+  const { data: restaurant } = useRestaurant(restaurantId);
 
   // Set default selection when data finishes loading
   useEffect(() => {
@@ -122,7 +133,100 @@ export default function POS() {
     toast.success('KOT sent to kitchen');
   };
 
+  const handleBillAndPay = async (paymentMethod: string) => {
+    const selectedTableData = tables.find(t => t.id === selectedTable);
+    
+    // Generate simple incremental order and bill numbers
+    const billCount = (await db.bills.count()) + 1;
+    const orderCount = (await db.orders.count()) + 1;
+    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const orderNumber = `ORD${dateStr}${String(orderCount).padStart(3, '0')}`;
+    const billNumber = `BL${dateStr}${String(billCount).padStart(3, '0')}`;
+
+    const orderId = crypto.randomUUID();
+
+    // Create order in Dexie
+    await db.orders.add({
+      id: orderId,
+      restaurant_id: restaurantId || 'guest-restaurant-id',
+      order_number: orderNumber,
+      order_type: orderType,
+      table_id: selectedTable || undefined,
+      table_number: selectedTableData?.number,
+      customer_name: customerName || undefined,
+      customer_phone: customerPhone || undefined,
+      status: 'paid',
+      subtotal,
+      discount_amount: 0,
+      tax_amount: cgst + sgst,
+      total,
+      payment_method: paymentMethod,
+      payment_status: 'paid',
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    // Create bill in Dexie
+    const newBillData: any = {
+      id: crypto.randomUUID(),
+      restaurant_id: restaurantId || 'guest-restaurant-id',
+      bill_number: billNumber,
+      order_id: orderId,
+      table_number: selectedTableData?.number,
+      order_type: orderType,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      items: orderItems.map(i => ({
+        name: i.name,
+        variant: i.variant_name,
+        quantity: i.qty,
+        rate: i.unit_price,
+        amount: i.qty * i.unit_price,
+        tax_rate: 5,
+        special_instructions: i.special_instructions
+      })),
+      subtotal,
+      discount_amount: 0,
+      cgst,
+      sgst,
+      igst: 0,
+      service_charge: 0,
+      packaging_charge: 0,
+      delivery_charge: 0,
+      round_off: 0,
+      grand_total: Math.round(total),
+      payment_method: paymentMethod,
+      status: 'paid',
+      created_at: new Date(),
+      paid_at: new Date(),
+    };
+    await db.bills.add(newBillData);
+
+    // Reset table in Dexie
+    if (selectedTable) {
+      await db.restaurantTables.update(selectedTable, { status: 'available' });
+    }
+
+    // Clear state
+    setOrderItems([]);
+    setSelectedTable(null);
+    setCustomerName('');
+    setCustomerPhone('');
+    setShowPayment(false);
+
+    setPrintingBill(newBillData);
+    toast.success(`Bill ${billNumber} saved to History & Printing...`, {
+      description: `Amount: ₹${Math.round(total)} paid via ${paymentMethod}`,
+      duration: 5000
+    });
+  };
+
   const selectedTableData = tables.find(t => t.id === selectedTable);
+
+  const upiId = (restaurant?.settings as any)?.upi_id || 'merchant@upi';
+  const upiName = restaurant?.name || 'Restaurant OS';
+  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${Math.round(total)}&cu=INR`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUri)}`;
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -391,7 +495,12 @@ export default function POS() {
                 onClick={() => toast.success('Order held')}>
                 <Pause className="h-3.5 w-3.5 mr-1" /> Hold
               </Button>
-              <Button size="sm" variant="secondary" className="h-9 text-xs bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button 
+                size="sm" 
+                variant="secondary" 
+                className="h-9 text-xs bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={() => setShowPayment(true)}
+              >
                 <FileText className="h-3.5 w-3.5 mr-1" /> Bill
               </Button>
               <Button size="sm" variant="ghost" className="h-9 text-xs text-destructive"
@@ -452,6 +561,66 @@ export default function POS() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={showPayment} onOpenChange={setShowPayment}>
+        <DialogContent className={showUpiQr ? "max-w-sm" : ""}>
+          <DialogHeader>
+            <DialogTitle>{showUpiQr ? 'Scan to Pay' : 'Select Payment Method'}</DialogTitle>
+          </DialogHeader>
+          {showUpiQr ? (
+            <div className="flex flex-col items-center justify-center space-y-5 py-2">
+              <div className="bg-white p-3 rounded-xl shadow-sm border">
+                <img src={qrCodeUrl} alt="UPI QR Code" className="w-[180px] h-[180px]" />
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-foreground">₹{Math.round(total)}</p>
+                <p className="text-sm text-muted-foreground mt-1">Scan using any UPI App</p>
+                <p className="text-xs font-mono bg-muted px-2 py-1 rounded inline-block mt-2">{upiId}</p>
+              </div>
+              <div className="flex w-full gap-3 pt-4 border-t mt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowUpiQr(false)}>Cancel</Button>
+                <Button className="flex-1 bg-green-600 hover:bg-green-700 font-bold" onClick={() => {
+                   setShowUpiQr(false);
+                   handleBillAndPay('UPI');
+                }}>Confirm Payment</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-center p-4 rounded-lg bg-primary/5 border">
+                <p className="text-sm text-muted-foreground">Total Amount</p>
+                <p className="text-3xl font-bold text-foreground">₹{Math.round(total)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-14 gap-2" onClick={() => handleBillAndPay('Cash')}>
+                  <Banknote className="h-4 w-4" /> Cash
+                </Button>
+                <Button variant="outline" className="h-14 gap-2" onClick={() => {
+                    const profileSettings = (restaurant?.settings as any) || {};
+                    if (profileSettings.upi_id) setShowUpiQr(true);
+                    else handleBillAndPay('UPI');
+                }}>
+                  <Smartphone className="h-4 w-4" /> UPI
+                </Button>
+                <Button variant="outline" className="h-14 gap-2" onClick={() => handleBillAndPay('Card')}>
+                  <CreditCard className="h-4 w-4" /> Card
+                </Button>
+                <Button variant="outline" className="h-14 gap-2" onClick={() => handleBillAndPay('Wallet')}>
+                  <Wallet className="h-4 w-4" /> Wallet
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Printable Receipt Overlay */}
+      <ThermalReceipt 
+        bill={printingBill} 
+        restaurant={restaurant} 
+        onClose={() => setPrintingBill(null)} 
+      />
     </div>
   );
 }

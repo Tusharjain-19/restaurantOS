@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { db, type Bill, type RestaurantProfile } from '@/lib/db';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { Printer } from 'lucide-react';
 
 interface Props {
@@ -11,7 +10,12 @@ interface Props {
 }
 
 export function ThermalReceipt({ bill, restaurant, onClose }: Props) {
-  const printers = useLiveQuery(() => db.printers.toArray());
+  const [printers, setPrinters] = useState<any[]>([]);
+
+  useEffect(() => {
+    db.printers.toArray().then(setPrinters).catch(() => {});
+  }, []);
+
   const billPrinter = printers?.find(p => p.type === 'bill' && p.is_default) || printers?.find(p => p.type === 'bill');
   const paperWidth = billPrinter?.paper_width || '80mm';
   
