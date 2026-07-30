@@ -1,234 +1,210 @@
-import { useState } from 'react';
-import { Plus, Search, Edit2, Trash2, Shield, Phone, Mail, Calendar, Clock, UserCheck, UserX } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { db, type StaffMember } from '@/lib/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { Plus, Trash2, RefreshCw, UserCircle2 } from 'lucide-react';
 
-const ROLE_LABELS: Record<string, { label: string; color: string }> = {
-  admin: { label: 'Admin', color: 'bg-red-500/10 text-red-600 border-red-200' },
-  manager: { label: 'Manager', color: 'bg-purple-500/10 text-purple-600 border-purple-200' },
-  captain: { label: 'Captain', color: 'bg-blue-500/10 text-blue-600 border-blue-200' },
-  cashier: { label: 'Cashier', color: 'bg-green-500/10 text-green-600 border-green-200' },
-  kitchen: { label: 'Kitchen', color: 'bg-orange-500/10 text-orange-600 border-orange-200' },
-  delivery: { label: 'Delivery', color: 'bg-cyan-500/10 text-cyan-600 border-cyan-200' },
-};
+interface Staff {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  staff_id: string | null;
+  pin: string | null;
+  role: string;
+  is_active: boolean;
+  shift: string | null;
+  salary: number | null;
+  created_at: string;
+}
 
-const SHIFT_LABELS: Record<string, string> = {
-  morning: '🌅 Morning (6AM - 2PM)',
-  afternoon: '☀️ Afternoon (2PM - 10PM)',
-  night: '🌙 Night (10PM - 6AM)',
-  full: '📋 Full Day',
-};
+const ROLES = [
+  { value: 'captain', label: 'Waiter (Captain)' },
+  { value: 'kitchen', label: 'Kitchen' },
+  { value: 'cashier', label: 'Cashier' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'delivery', label: 'Delivery' },
+];
 
-export default function Staff() {
-  const allStaff = useLiveQuery(() => db.staff.toArray()) || [];
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [editStaff, setEditStaff] = useState<Partial<StaffMember> | null>(null);
-  const [showForm, setShowForm] = useState(false);
-
-  const filtered = allStaff.filter(s => {
-    const matchesSearch = !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.phone.includes(search);
-    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
-    return matchesSearch && matchesRole;
+export default function StaffPage() {
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    name: '', email: '', phone: '', staff_id: '', pin: '',
+    role: 'captain', salary: '', shift: 'full',
   });
 
-  const activeCount = allStaff.filter(s => s.is_active).length;
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from('staff').select('*').order('created_at', { ascending: false });
+    setStaff((data ?? []) as Staff[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const saveStaff = async () => {
-    if (!editStaff?.name || !editStaff?.phone || !editStaff?.pin) {
-      toast.error('Please fill all required fields');
+  const resetForm = () => setForm({
+    name: '', email: '', phone: '', staff_id: '', pin: '',
+    role: 'captain', salary: '', shift: 'full',
+  });
+
+  const create = async () => {
+    if (!form.name || !form.email || !form.staff_id || !form.pin) {
+      toast.error('Name, email, Staff ID and PIN are required'); return;
+    }
+    if (form.pin.length < 4) { toast.error('PIN must be 4–6 digits'); return; }
+    setSubmitting(true);
+    const { data, error } = await supabase.functions.invoke('admin-create-staff', {
+      body: {
+        name: form.name, email: form.email, phone: form.phone || null,
+        staff_id: form.staff_id, pin: form.pin, role: form.role,
+        salary: form.salary ? Number(form.salary) : null,
+        shift: form.shift,
+      },
+    });
+    setSubmitting(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error ?? error?.message ?? 'Failed');
       return;
     }
-    if (editStaff.id) {
-      await db.staff.update(editStaff.id, editStaff);
-      toast.success('Staff member updated');
-    } else {
-      await db.staff.add({
-        ...editStaff as any,
-        is_active: true,
-        created_at: new Date(),
-        joining_date: editStaff.joining_date || new Date(),
-      });
-      toast.success('Staff member added');
-    }
-    setEditStaff(null);
-    setShowForm(false);
+    toast.success('Staff created');
+    setDialogOpen(false);
+    resetForm();
+    load();
   };
 
-  const toggleActive = async (staff: StaffMember) => {
-    await db.staff.update(staff.id!, { is_active: !staff.is_active });
-    toast.success(staff.is_active ? 'Staff deactivated' : 'Staff activated');
+  const toggleActive = async (s: Staff) => {
+    await supabase.from('staff').update({ is_active: !s.is_active }).eq('id', s.id);
+    load();
+  };
+  const remove = async (s: Staff) => {
+    if (!confirm(`Deactivate ${s.name}? (Auth user stays — login disabled)`)) return;
+    await supabase.from('staff').update({ is_active: false }).eq('id', s.id);
+    load();
   };
 
-  const deleteStaff = async (id: number) => {
-    await db.staff.delete(id);
-    toast.success('Staff member removed');
+  const grouped = {
+    captain: staff.filter(s => s.role === 'captain'),
+    kitchen: staff.filter(s => s.role === 'kitchen'),
+    other: staff.filter(s => !['captain', 'kitchen'].includes(s.role)),
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Staff Management</h1>
-          <p className="text-sm text-muted-foreground">{activeCount} active of {allStaff.length} total staff</p>
+          <p className="text-sm text-muted-foreground">Create waiter, kitchen and other staff accounts for your restaurant</p>
         </div>
-        <Button onClick={() => {
-          setEditStaff({ name: '', phone: '', role: 'captain', pin: '', shift: 'full', salary: 0 });
-          setShowForm(true);
-        }} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Add Staff
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
+          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button><Plus className="h-4 w-4 mr-1" />Add Staff</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Staff Member</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="space-y-1.5 col-span-2">
+                  <Label>Role</Label>
+                  <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5"><Label>Name</Label>
+                  <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ramesh Kumar" /></div>
+                <div className="space-y-1.5"><Label>Staff ID</Label>
+                  <Input value={form.staff_id} onChange={e => setForm(f => ({ ...f, staff_id: e.target.value.toUpperCase() }))} placeholder="W001 / K001" /></div>
+                <div className="space-y-1.5"><Label>Email</Label>
+                  <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="staff@restaurant.local" /></div>
+                <div className="space-y-1.5"><Label>Phone</Label>
+                  <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+91…" /></div>
+                <div className="space-y-1.5"><Label>PIN (4–6 digits)</Label>
+                  <Input value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 6) }))} placeholder="1234" /></div>
+                <div className="space-y-1.5"><Label>Shift</Label>
+                  <Select value={form.shift} onValueChange={v => setForm(f => ({ ...f, shift: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full">Full</SelectItem>
+                      <SelectItem value="morning">Morning</SelectItem>
+                      <SelectItem value="evening">Evening</SelectItem>
+                      <SelectItem value="night">Night</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 col-span-2"><Label>Monthly Salary (optional)</Label>
+                  <Input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="15000" /></div>
+              </div>
+              <Button className="w-full mt-3" onClick={create} disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create Account'}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Login: <code>{form.role === 'kitchen' ? '/kitchen/login' : '/waiter/login'}</code> with Staff ID + PIN
+              </p>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-6 gap-3">
-        {Object.entries(ROLE_LABELS).map(([role, { label, color }]) => {
-          const count = allStaff.filter(s => s.role === role && s.is_active).length;
-          return (
-            <Card key={role} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setRoleFilter(role === roleFilter ? 'all' : role)}>
-              <CardContent className="p-3 text-center">
-                <div className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${color} mb-1`}>{label}</div>
-                <div className="text-xl font-bold text-foreground">{count}</div>
+      {loading ? (
+        <Card><CardContent className="py-12 text-center text-muted-foreground">Loading…</CardContent></Card>
+      ) : (
+        <>
+          <Section title="Waiters" items={grouped.captain} onToggle={toggleActive} onRemove={remove} loginHint="/waiter/login" />
+          <Section title="Kitchen" items={grouped.kitchen} onToggle={toggleActive} onRemove={remove} loginHint="/kitchen/login" />
+          <Section title="Other Staff" items={grouped.other} onToggle={toggleActive} onRemove={remove} loginHint="/login" />
+        </>
+      )}
+    </div>
+  );
+}
+
+function Section({ title, items, onToggle, onRemove, loginHint }: {
+  title: string; items: Staff[]; onToggle: (s: Staff) => void; onRemove: (s: Staff) => void; loginHint: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{title} <span className="text-muted-foreground text-sm">({items.length})</span></h2>
+        <code className="text-xs text-muted-foreground">{loginHint}</code>
+      </div>
+      {items.length === 0 ? (
+        <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No {title.toLowerCase()} yet</CardContent></Card>
+      ) : (
+        <div className="grid gap-2">
+          {items.map(s => (
+            <Card key={s.id} className={s.is_active ? '' : 'opacity-50'}>
+              <CardContent className="py-3 flex items-center gap-4">
+                <UserCircle2 className="h-9 w-9 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold">{s.name}</span>
+                    <Badge variant="outline" className="text-xs">{s.staff_id}</Badge>
+                    <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-xs">{s.is_active ? 'Active' : 'Inactive'}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {s.email} {s.phone && `· ${s.phone}`} · PIN: <code>{s.pin}</code> · Shift: {s.shift}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => onToggle(s)}>
+                  {s.is_active ? 'Deactivate' : 'Activate'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => onRemove(s)}><Trash2 className="h-4 w-4" /></Button>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search staff by name or phone..." className="pl-9" />
-        </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            {Object.entries(ROLE_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Staff Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filtered.map(staff => {
-          const roleInfo = ROLE_LABELS[staff.role] || ROLE_LABELS.captain;
-          return (
-            <Card key={staff.id} className={`transition-all hover:shadow-md ${!staff.is_active ? 'opacity-50' : ''}`}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-11 w-11">
-                      <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                        {staff.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-semibold text-foreground">{staff.name}</div>
-                      <Badge className={`text-[10px] h-5 ${roleInfo.color}`} variant="outline">{roleInfo.label}</Badge>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {staff.is_active ? (
-                      <UserCheck className="h-4 w-4 text-success" />
-                    ) : (
-                      <UserX className="h-4 w-4 text-destructive" />
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-muted-foreground mb-3">
-                  <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{staff.phone}</div>
-                  {staff.email && <div className="flex items-center gap-2"><Mail className="h-3 w-3" />{staff.email}</div>}
-                  <div className="flex items-center gap-2"><Clock className="h-3 w-3" />{SHIFT_LABELS[staff.shift || 'full']}</div>
-                  <div className="flex items-center gap-2"><Shield className="h-3 w-3" />PIN: {staff.pin}</div>
-                  {staff.salary ? <div className="flex items-center gap-2"><Calendar className="h-3 w-3" />₹{staff.salary?.toLocaleString()}/month</div> : null}
-                </div>
-
-                <div className="flex gap-1.5">
-                  <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => { setEditStaff(staff); setShowForm(true); }}>
-                    <Edit2 className="h-3 w-3 mr-1" /> Edit
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => toggleActive(staff)}>
-                    {staff.is_active ? 'Deactivate' : 'Activate'}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => deleteStaff(staff.id!)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg mb-1">No staff found</p>
-          <p className="text-sm">Add staff members to manage roles and access</p>
+          ))}
         </div>
       )}
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editStaff?.id ? 'Edit Staff Member' : 'Add New Staff'}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Full Name *</Label><Input value={editStaff?.name || ''} onChange={e => setEditStaff(f => f ? ({ ...f, name: e.target.value }) : null)} placeholder="Rajesh Kumar" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Phone *</Label><Input value={editStaff?.phone || ''} onChange={e => setEditStaff(f => f ? ({ ...f, phone: e.target.value }) : null)} placeholder="9876543210" /></div>
-              <div className="space-y-1"><Label>Email</Label><Input value={editStaff?.email || ''} onChange={e => setEditStaff(f => f ? ({ ...f, email: e.target.value }) : null)} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Role *</Label>
-                <Select value={editStaff?.role} onValueChange={v => setEditStaff(f => f ? ({ ...f, role: v as any }) : null)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Shift</Label>
-                <Select value={editStaff?.shift || 'full'} onValueChange={v => setEditStaff(f => f ? ({ ...f, shift: v as any }) : null)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="morning">Morning</SelectItem>
-                    <SelectItem value="afternoon">Afternoon</SelectItem>
-                    <SelectItem value="night">Night</SelectItem>
-                    <SelectItem value="full">Full Day</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>4-Digit PIN *</Label><Input type="text" maxLength={4} value={editStaff?.pin || ''} onChange={e => setEditStaff(f => f ? ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }) : null)} placeholder="1234" /></div>
-              <div className="space-y-1"><Label>Password</Label><Input type="text" value={editStaff?.password_hash || ''} onChange={e => setEditStaff(f => f ? ({ ...f, password_hash: e.target.value }) : null)} placeholder="For dashboard login" /></div>
-            </div>
-            <div className="space-y-1"><Label>Monthly Salary (₹)</Label><Input type="number" value={editStaff?.salary || ''} onChange={e => setEditStaff(f => f ? ({ ...f, salary: Number(e.target.value) }) : null)} /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button onClick={saveStaff}>Save Staff</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -1,238 +1,227 @@
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, Crown, Award, Phone, Mail, MapPin, Calendar, Edit2, Ban, Gift, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Crown, Medal, Award, Star, Gift, TrendingUp, Calendar, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import { db, type Customer } from '@/lib/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
-const TIER_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string; gradient: string }> = {
-  bronze: { label: 'Bronze', icon: Award, color: 'text-amber-700', bg: 'bg-amber-100', gradient: 'from-amber-500 to-amber-700' },
-  silver: { label: 'Silver', icon: Star, color: 'text-gray-500', bg: 'bg-gray-100', gradient: 'from-gray-400 to-gray-600' },
-  gold: { label: 'Gold', icon: Crown, color: 'text-yellow-600', bg: 'bg-yellow-100', gradient: 'from-yellow-400 to-yellow-600' },
-  platinum: { label: 'Platinum', icon: Crown, color: 'text-purple-600', bg: 'bg-purple-100', gradient: 'from-purple-500 to-purple-700' },
+type Tier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+const TIER_CONFIG: Record<Tier, { label: string; color: string; icon: typeof Crown; next: string; nextAt: number }> = {
+  bronze: { label: 'Bronze', color: 'bg-amber-700/20 text-amber-700', icon: Medal, next: 'Silver', nextAt: 500 },
+  silver: { label: 'Silver', color: 'bg-gray-400/20 text-gray-600', icon: Award, next: 'Gold', nextAt: 2000 },
+  gold: { label: 'Gold', color: 'bg-yellow-500/20 text-yellow-700', icon: Star, next: 'Platinum', nextAt: 5000 },
+  platinum: { label: 'Platinum', color: 'bg-purple-500/20 text-purple-700', icon: Crown, next: '', nextAt: 0 },
 };
+
+const MOCK_CUSTOMER = {
+  id: 'c1', name: 'Priya Sharma', phone: '9876543210', email: 'priya@email.com',
+  birthday: '1990-03-15', tier: 'platinum' as Tier, total_points: 6200,
+  total_visits: 48, total_spent: 72400, member_since: '2024-06-10',
+  preferences: { dietary: 'Non-Veg', seating: 'Window', allergies: 'None' },
+  favorite_items: ['Paneer Tikka', 'Butter Chicken', 'Masala Chai'],
+};
+
+const MOCK_VISITS = [
+  { date: '2026-04-09', bill: '#1247', items: 'Paneer Tikka, Naan x2, Chai', amount: 680, payment: 'UPI', points: 68 },
+  { date: '2026-04-05', bill: '#1198', items: 'Butter Chicken, Rice, Raita', amount: 520, payment: 'Cash', points: 52 },
+  { date: '2026-03-30', bill: '#1142', items: 'Thali, Lassi', amount: 350, payment: 'Card', points: 35 },
+  { date: '2026-03-22', bill: '#1089', items: 'Biryani, Kebab Platter', amount: 890, payment: 'UPI', points: 89 },
+  { date: '2026-03-15', bill: '#1034', items: 'Pizza, Pasta, Mocktail x2', amount: 1200, payment: 'Card', points: 120 },
+];
+
+const MOCK_POINTS_LOG = [
+  { date: '2026-04-09', type: 'earn', points: 68, balance: 6200, reason: 'Bill #1247' },
+  { date: '2026-04-05', type: 'earn', points: 52, balance: 6132, reason: 'Bill #1198' },
+  { date: '2026-04-01', type: 'redeem', points: -200, balance: 6080, reason: 'Redeemed ₹50 discount' },
+  { date: '2026-03-30', type: 'earn', points: 35, balance: 6280, reason: 'Bill #1142' },
+  { date: '2026-03-22', type: 'earn', points: 89, balance: 6245, reason: 'Bill #1089' },
+  { date: '2026-03-15', type: 'adjust', points: 500, balance: 6156, reason: 'Birthday bonus' },
+];
 
 export default function CustomerProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const customer = useLiveQuery(() => db.customers.get(Number(id)), [id]);
-  const orders = useLiveQuery(() => db.orders.where('customer_phone').equals(customer?.phone || '').toArray(), [customer?.phone]);
-  const [showEdit, setShowEdit] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<Customer>>({});
-  const [showPoints, setShowPoints] = useState(false);
-  const [pointsToAdd, setPointsToAdd] = useState(0);
-
-  if (!customer) {
-    return (
-      <div className="text-center py-16 text-muted-foreground">
-        <p className="text-lg">Customer not found</p>
-        <Button variant="outline" className="mt-2" onClick={() => navigate('/customers')}>Back to Customers</Button>
-      </div>
-    );
-  }
-
-  const tierConfig = TIER_CONFIG[customer.tier] || TIER_CONFIG.bronze;
-  const TierIcon = tierConfig.icon;
-
-  const saveEdit = async () => {
-    await db.customers.update(customer.id!, editForm);
-    setShowEdit(false);
-    toast.success('Profile updated');
-  };
-
-  const addPoints = async () => {
-    if (pointsToAdd <= 0) return;
-    const newPoints = customer.loyalty_points + pointsToAdd;
-    let newTier = customer.tier;
-    if (newPoints >= 5000) newTier = 'platinum';
-    else if (newPoints >= 2000) newTier = 'gold';
-    else if (newPoints >= 500) newTier = 'silver';
-    await db.customers.update(customer.id!, { loyalty_points: newPoints, tier: newTier });
-    setShowPoints(false);
-    setPointsToAdd(0);
-    toast.success(`${pointsToAdd} points added!`);
-  };
-
-  const toggleBlacklist = async () => {
-    await db.customers.update(customer.id!, { is_blacklisted: !customer.is_blacklisted });
-    toast.success(customer.is_blacklisted ? 'Customer unblocked' : 'Customer blacklisted');
-  };
+  const c = MOCK_CUSTOMER;
+  const tier = TIER_CONFIG[c.tier];
+  const TierIcon = tier.icon;
+  const avgBill = Math.round(c.total_spent / c.total_visits);
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" onClick={() => navigate('/customers')} className="gap-1.5 -ml-2">
-        <ArrowLeft className="h-4 w-4" /> Back to Customers
+      <Button variant="ghost" size="sm" onClick={() => navigate('/customers')}>
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Customers
       </Button>
 
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-6">
-            <Avatar className="h-20 w-20">
-              <AvatarFallback className={cn("text-white text-2xl font-bold bg-gradient-to-br", tierConfig.gradient)}>
-                {customer.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-foreground">{customer.name}</h1>
-                <Badge className={cn("gap-1", tierConfig.bg, tierConfig.color)} variant="outline">
-                  <TierIcon className="h-3.5 w-3.5" /> {tierConfig.label}
-                </Badge>
-                {customer.is_blacklisted && <Badge variant="destructive">Blocked</Badge>}
-              </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{customer.phone}</span>
-                {customer.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{customer.email}</span>}
-                {customer.address && <span className="flex items-center gap-1 max-w-xs truncate"><MapPin className="h-3.5 w-3.5" />{customer.address}</span>}
-              </div>
-              {customer.birthday && (
-                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> Birthday: {new Date(customer.birthday).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setEditForm(customer); setShowEdit(true); }} className="gap-1">
-                <Edit2 className="h-3.5 w-3.5" /> Edit
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowPoints(true)} className="gap-1">
-                <Gift className="h-3.5 w-3.5" /> Add Points
-              </Button>
-              <Button variant="ghost" size="sm" onClick={toggleBlacklist} className={cn("gap-1", customer.is_blacklisted ? "text-success" : "text-destructive")}>
-                <Ban className="h-3.5 w-3.5" /> {customer.is_blacklisted ? 'Unblock' : 'Block'}
-              </Button>
-            </div>
+      {/* Header */}
+      <div className="rounded-lg border bg-card p-5">
+        <div className="flex items-start gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+            {c.name.charAt(0)}
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-foreground">{c.name}</h1>
+              <Badge className={cn('text-xs', tier.color)}><TierIcon className="h-3 w-3 mr-0.5" /> {tier.label}</Badge>
+            </div>
+            <div className="text-sm text-muted-foreground">{c.phone} • {c.email}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Member since {c.member_since}</div>
+          </div>
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Star className="h-6 w-6 text-primary mx-auto mb-1" />
-            <p className="text-2xl font-bold text-primary">{customer.loyalty_points.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Loyalty Points</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-6 w-6 text-foreground mx-auto mb-1" />
-            <p className="text-2xl font-bold text-foreground">₹{customer.total_spend.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Total Spend</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Calendar className="h-6 w-6 text-foreground mx-auto mb-1" />
-            <p className="text-2xl font-bold text-foreground">{customer.total_visits}</p>
-            <p className="text-xs text-muted-foreground">Total Visits</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Gift className="h-6 w-6 text-foreground mx-auto mb-1" />
-            <p className="text-2xl font-bold text-foreground">₹{customer.total_visits > 0 ? Math.round(customer.total_spend / customer.total_visits) : 0}</p>
-            <p className="text-xs text-muted-foreground">Avg per Visit</p>
-          </CardContent>
-        </Card>
+        {/* Stats row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+          {[
+            { icon: Calendar, label: 'Total Visits', value: c.total_visits },
+            { icon: CreditCard, label: 'Total Spent', value: `₹${c.total_spent.toLocaleString()}` },
+            { icon: Gift, label: 'Points Balance', value: c.total_points.toLocaleString() },
+            { icon: TrendingUp, label: 'Avg Bill', value: `₹${avgBill}` },
+          ].map(s => (
+            <div key={s.label} className="rounded-lg bg-muted/50 p-3 text-center">
+              <s.icon className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+              <div className="text-lg font-bold text-foreground">{s.value}</div>
+              <div className="text-[10px] text-muted-foreground">{s.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Loyalty Tier Progress */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Loyalty Tier Progress</CardTitle></CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4 mb-3">
-            {Object.entries(TIER_CONFIG).map(([tier, config]) => {
-              const thresholds: Record<string, number> = { bronze: 0, silver: 500, gold: 2000, platinum: 5000 };
-              const isActive = customer.tier === tier;
-              const isPast = thresholds[tier] <= thresholds[customer.tier];
-              return (
-                <div key={tier} className="flex-1 text-center">
-                  <div className={cn("h-8 w-8 rounded-full mx-auto mb-1 flex items-center justify-center",
-                    isActive ? `bg-gradient-to-br ${config.gradient} text-white` :
-                    isPast ? config.bg : 'bg-muted'
-                  )}>
-                    <config.icon className={cn("h-4 w-4", isActive ? 'text-white' : isPast ? config.color : 'text-muted-foreground')} />
-                  </div>
-                  <p className={cn("text-xs font-medium", isActive ? config.color : 'text-muted-foreground')}>{config.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{thresholds[tier]}+ pts</p>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Tabs defaultValue="visits">
+        <TabsList>
+          <TabsTrigger value="visits">Visit History</TabsTrigger>
+          <TabsTrigger value="points">Loyalty Points</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="comms">Communications</TabsTrigger>
+        </TabsList>
 
-      {/* Order History */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Order History</CardTitle></CardHeader>
-        <CardContent>
-          {orders && orders.length > 0 ? (
-            <div className="space-y-2">
-              {orders.slice(0, 10).map(o => (
-                <div key={o.id} className="flex items-center justify-between p-2 rounded-lg border text-sm">
-                  <div>
-                    <span className="font-medium text-foreground">{o.order_number}</span>
-                    <span className="text-xs text-muted-foreground ml-2 capitalize">{o.order_type.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</span>
-                    <span className="font-bold text-foreground">₹{o.total.toLocaleString()}</span>
-                  </div>
-                </div>
+        <TabsContent value="visits" className="rounded-lg border bg-card mt-2">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Bill #</TableHead>
+                <TableHead className="hidden md:table-cell">Items</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead className="hidden md:table-cell">Payment</TableHead>
+                <TableHead>Points</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {MOCK_VISITS.map((v, i) => (
+                <TableRow key={i}>
+                  <TableCell className="text-xs">{v.date}</TableCell>
+                  <TableCell className="font-medium">{v.bill}</TableCell>
+                  <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-[200px] truncate">{v.items}</TableCell>
+                  <TableCell>₹{v.amount}</TableCell>
+                  <TableCell className="hidden md:table-cell"><Badge variant="outline" className="text-[10px]">{v.payment}</Badge></TableCell>
+                  <TableCell className="text-success font-medium">+{v.points}</TableCell>
+                </TableRow>
               ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground py-4 text-center">No orders yet</p>
-          )}
-        </CardContent>
-      </Card>
+            </TableBody>
+          </Table>
+        </TabsContent>
 
-      {/* Edit Dialog */}
-      <Dialog open={showEdit} onOpenChange={setShowEdit}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit Customer</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Name</Label><Input value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></div>
-              <div className="space-y-1"><Label>Phone</Label><Input value={editForm.phone || ''} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} /></div>
-            </div>
-            <div className="space-y-1"><Label>Email</Label><Input value={editForm.email || ''} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} /></div>
-            <div className="space-y-1"><Label>Address</Label><Input value={editForm.address || ''} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} /></div>
-            <div className="space-y-1"><Label>Notes</Label><Input value={editForm.notes || ''} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} /></div>
+        <TabsContent value="points" className="space-y-4 mt-2">
+          <div className="rounded-lg border bg-card p-5 text-center">
+            <div className="text-xs text-muted-foreground">Points Balance</div>
+            <div className="text-4xl font-bold text-foreground">{c.total_points.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-1">Worth ₹{(c.total_points * 0.25).toLocaleString()} in discounts</div>
+            <div className="text-[10px] text-muted-foreground">Earning rate: 10 pts per ₹100 spent • Redemption: 1 pt = ₹0.25</div>
+            <Button size="sm" className="mt-3"><Gift className="h-3.5 w-3.5 mr-1" /> Redeem Points</Button>
           </div>
-          <DialogFooter><Button onClick={saveEdit}>Save Changes</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Points</TableHead>
+                  <TableHead>Balance</TableHead>
+                  <TableHead>Reason</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {MOCK_POINTS_LOG.map((p, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-xs">{p.date}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={cn('text-[10px]',
+                        p.type === 'earn' ? 'bg-success/10 text-success' :
+                        p.type === 'redeem' ? 'bg-destructive/10 text-destructive' :
+                        'bg-primary/10 text-primary'
+                      )}>{p.type}</Badge>
+                    </TableCell>
+                    <TableCell className={cn('font-medium', p.points > 0 ? 'text-success' : 'text-destructive')}>
+                      {p.points > 0 ? '+' : ''}{p.points}
+                    </TableCell>
+                    <TableCell>{p.balance}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{p.reason}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
 
-      {/* Add Points Dialog */}
-      <Dialog open={showPoints} onOpenChange={setShowPoints}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add Loyalty Points</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="text-center p-4 rounded-lg bg-primary/5">
-              <p className="text-xs text-muted-foreground">Current Points</p>
-              <p className="text-3xl font-bold text-primary">{customer.loyalty_points}</p>
+        <TabsContent value="preferences" className="mt-2">
+          <div className="rounded-lg border bg-card p-5 space-y-4">
+            <div>
+              <div className="text-sm font-medium text-foreground mb-2">Dietary Preferences</div>
+              <div className="flex gap-2">
+                {['Vegetarian', 'Non-Veg', 'Vegan', 'Jain'].map(d => (
+                  <Badge key={d} variant={c.preferences.dietary === d ? 'default' : 'outline'} className="cursor-pointer">{d}</Badge>
+                ))}
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Points to Add</Label>
-              <Input type="number" min={1} value={pointsToAdd || ''} onChange={e => setPointsToAdd(Number(e.target.value))} placeholder="Enter points" />
+            <div>
+              <div className="text-sm font-medium text-foreground mb-1">Allergies</div>
+              <div className="text-sm text-muted-foreground">{c.preferences.allergies || 'None reported'}</div>
             </div>
-            <p className="text-xs text-muted-foreground">New balance: {customer.loyalty_points + pointsToAdd} points</p>
+            <div>
+              <div className="text-sm font-medium text-foreground mb-1">Seating Preference</div>
+              <div className="text-sm text-muted-foreground">{c.preferences.seating || 'No preference'}</div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-foreground mb-2">Favorite Items (auto-detected)</div>
+              <div className="flex gap-2">
+                {c.favorite_items.map(item => (
+                  <Badge key={item} variant="secondary">{item}</Badge>
+                ))}
+              </div>
+            </div>
           </div>
-          <DialogFooter><Button onClick={addPoints} disabled={pointsToAdd <= 0}>Add Points</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
+
+        <TabsContent value="comms" className="mt-2">
+          <div className="rounded-lg border bg-card p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-foreground">WhatsApp Opt-in</div>
+                <div className="text-xs text-muted-foreground">Receive bills and offers via WhatsApp</div>
+              </div>
+              <Switch defaultChecked />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-foreground">SMS Opt-in</div>
+                <div className="text-xs text-muted-foreground">Receive SMS notifications</div>
+              </div>
+              <Switch />
+            </div>
+            <div className="border-t pt-3">
+              <div className="text-sm font-medium text-foreground mb-2">Recent Communications</div>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="flex justify-between"><span>Bill #1247 sent via WhatsApp</span><span>09 Apr 2026</span></div>
+                <div className="flex justify-between"><span>Birthday offer sent via SMS</span><span>15 Mar 2026</span></div>
+                <div className="flex justify-between"><span>Bill #1034 sent via WhatsApp</span><span>15 Mar 2026</span></div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

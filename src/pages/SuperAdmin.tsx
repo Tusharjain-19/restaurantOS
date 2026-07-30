@@ -1,237 +1,227 @@
-import { useState, useEffect } from 'react';
-import { Shield, Key, Building2, Calendar, CheckCircle2, Copy, AlertCircle, RefreshCw, LogOut, Plus, Trash2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabase';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Plus, Trash2, Copy, LogOut, Eye, EyeOff, RefreshCw, Shield, Edit } from 'lucide-react';
+import { format } from 'date-fns';
+
+const SUPER_ADMIN_EMAIL = 'admin@restaurantos.test';
 
 interface License {
   id: string;
   license_key: string;
   restaurant_name: string;
   admin_username: string;
-  admin_password?: string;
+  admin_password: string;
   is_active: boolean;
   expires_at: string;
   created_at: string;
-  client_email?: string;
-  client_mobile?: string;
-  account_details?: string;
-  subscription_plan?: string;
+  client_email: string | null;
+  client_mobile: string | null;
+  subscription_plan: string | null;
+  account_details: string | null;
+}
+
+function generateLicenseKey() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const segments = Array.from({ length: 4 }, () =>
+    Array.from({ length: 5 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  );
+  return segments.join('-');
 }
 
 export default function SuperAdmin() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [hqPassword, setHqPassword] = useState('');
-  
+  const [authed, setAuthed] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [licenses, setLicenses] = useState<License[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editingLicense, setEditingLicense] = useState<License | null>(null);
-  const [formData, setFormData] = useState({
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+
+  const [form, setForm] = useState({
     restaurant_name: '',
-    admin_username: 'Admin',
-    admin_password: 'admin123',
-    validity_months: 12,
+    admin_username: '',
+    admin_password: '',
+    expires_at: '',
     client_email: '',
     client_mobile: '',
+    subscription_plan: 'Standard',
     account_details: '',
-    subscription_plan: 'Yearly'
   });
 
-  const openEdit = (lic: License) => {
-    setEditingLicense(lic);
-    setFormData({
-      restaurant_name: lic.restaurant_name,
-      admin_username: lic.admin_username,
-      admin_password: lic.admin_password || '********',
-      validity_months: 0,
-      client_email: lic.client_email || '',
-      client_mobile: lic.client_mobile || '',
-      account_details: lic.account_details || '',
-      subscription_plan: lic.subscription_plan || 'Yearly'
-    });
-    setShowAdd(true);
-  };
+  const [editForm, setEditForm] = useState<License | null>(null);
 
-  const closeDialog = () => {
-    setShowAdd(false);
-    setEditingLicense(null);
-    setFormData({ 
-      restaurant_name: '', 
-      admin_username: 'Admin', 
-      admin_password: 'admin123', 
-      validity_months: 12,
-      client_email: '',
-      client_mobile: '',
-      account_details: '',
-      subscription_plan: 'Yearly'
-    });
-  };
-
-  const checkDbSetup = async () => {
-    const { error } = await supabase.from('licenses').select('id').limit(1);
-    if (error && error.code === '42P01') {
-      toast.error('Supabase "licenses" table is missing!', { duration: 10000 });
-    }
-  };
-
-  const fetchLicenses = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('licenses').select('*').order('created_at', { ascending: false });
-    if (error) {
-      toast.error('Failed to load licenses: ' + error.message);
-    } else {
-      setLicenses(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      checkDbSetup();
+  const checkAuth = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.email === SUPER_ADMIN_EMAIL) {
+      setAuthed(true);
       fetchLicenses();
     }
-  }, [isAuthenticated]);
+    setLoading(false);
+  }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (hqPassword === 'admin@company2025') {
-      setIsAuthenticated(true);
-      toast.success('Welcome to Company HQ');
-    } else {
-      toast.error('Invalid HQ Password');
-    }
+  useEffect(() => { checkAuth(); }, [checkAuth]);
+
+  const fetchLicenses = async () => {
+    const { data } = await supabase.from('licenses').select('*').order('created_at', { ascending: false });
+    if (data) setLicenses(data as unknown as License[]);
   };
 
-  const generateKey = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let key = '';
-    for (let i = 0; i < 16; i++) {
-        if (i > 0 && i % 4 === 0) key += '-';
-        key += chars.charAt(Math.floor(Math.random() * chars.length));
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const email = fd.get('email') as string;
+    const password = fd.get('password') as string;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { toast.error('Invalid credentials'); return; }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.email !== SUPER_ADMIN_EMAIL) {
+      await supabase.auth.signOut();
+      toast.error('Access denied. Super admin only.');
+      return;
     }
-    return key;
+    setAuthed(true);
+    fetchLicenses();
   };
 
   const createLicense = async () => {
-    if (!formData.restaurant_name || !formData.admin_username || !formData.admin_password) {
-      toast.error('Basic fields are required');
+    if (!form.restaurant_name || !form.admin_username || !form.admin_password || !form.expires_at) {
+      toast.error('Fill all fields'); return;
+    }
+    const email = form.admin_username.trim();
+
+    const { data, error } = await supabase.functions.invoke('admin-create-restaurant', {
+      body: {
+        restaurant_name: form.restaurant_name,
+        admin_email: email,
+        admin_password: form.admin_password,
+        expires_at: new Date(form.expires_at).toISOString(),
+        plan: form.subscription_plan,
+        client_email: form.client_email || null,
+        client_mobile: form.client_mobile || null,
+        account_details: form.account_details || null,
+      },
+    });
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error ?? error?.message ?? 'Failed to create restaurant');
       return;
     }
-    
-    setLoading(true);
-    const key = generateKey();
-    const expiry = new Date();
-    expiry.setMonth(expiry.getMonth() + formData.validity_months);
-
-    const { error } = await supabase.from('licenses').insert([{
-      license_key: key,
-      restaurant_name: formData.restaurant_name,
-      admin_username: formData.admin_username,
-      admin_password: formData.admin_password,
-      client_email: formData.client_email,
-      client_mobile: formData.client_mobile,
-      account_details: formData.account_details,
-      subscription_plan: formData.subscription_plan,
-      is_active: true,
-      expires_at: expiry.toISOString()
-    }]);
-
-    if (error) {
-      toast.error('Failed to create license: ' + error.message);
-    } else {
-      toast.success('License generated successfully!');
-      closeDialog();
-      fetchLicenses();
-    }
-    setLoading(false);
+    toast.success(`Restaurant created! License: ${(data as any).license_key}`);
+    setDialogOpen(false);
+    setForm({
+      restaurant_name: '',
+      admin_username: '',
+      admin_password: '',
+      expires_at: '',
+      client_email: '',
+      client_mobile: '',
+      subscription_plan: 'Standard',
+      account_details: '',
+    });
+    fetchLicenses();
   };
 
   const updateLicense = async () => {
-    if (!editingLicense) return;
-    setLoading(true);
-    
-    const expiry = new Date(editingLicense.expires_at);
-    if (formData.validity_months > 0) {
-      expiry.setMonth(expiry.getMonth() + formData.validity_months);
-    }
-
-    const { error } = await supabase.from('licenses').update({
-      restaurant_name: formData.restaurant_name,
-      admin_username: formData.admin_username,
-      client_email: formData.client_email,
-      client_mobile: formData.client_mobile,
-      account_details: formData.account_details,
-      subscription_plan: formData.subscription_plan,
-      expires_at: expiry.toISOString()
-    }).eq('id', editingLicense.id);
+    if (!editForm) return;
+    const { error } = await supabase
+      .from('licenses')
+      .update({
+        restaurant_name: editForm.restaurant_name,
+        admin_username: editForm.admin_username,
+        admin_password: editForm.admin_password,
+        client_email: editForm.client_email || null,
+        client_mobile: editForm.client_mobile || null,
+        subscription_plan: editForm.subscription_plan,
+        expires_at: editForm.expires_at,
+        account_details: editForm.account_details || null,
+      } as any)
+      .eq('id', editForm.id);
 
     if (error) {
-      toast.error('Failed to update: ' + error.message);
+      toast.error(error.message);
     } else {
-      toast.success('Client details updated!');
-      closeDialog();
+      toast.success('Credentials and details updated successfully!');
+      setEditDialogOpen(false);
       fetchLicenses();
     }
-    setLoading(false);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
-  };
+  const toggleActive = async (id: string, current: boolean) => {
+    const { data: license } = await supabase
+      .from('licenses')
+      .update({ is_active: !current } as any)
+      .eq('id', id)
+      .select('restaurant_id')
+      .maybeSingle();
 
-  const toggleStatus = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase.from('licenses').update({ is_active: !currentStatus }).eq('id', id);
-    if (error) {
-      toast.error('Failed to update status');
-    } else {
-      toast.success(`License ${!currentStatus ? 'activated' : 'deactivated'}`);
-      fetchLicenses();
+    if (license?.restaurant_id) {
+      await supabase
+        .from('restaurants')
+        .update({ is_active: !current } as any)
+        .eq('id', license.restaurant_id);
     }
+
+    toast.success(current ? 'License deactivated' : 'License activated');
+    fetchLicenses();
   };
 
   const deleteLicense = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
-    const { error } = await supabase.from('licenses').delete().eq('id', id);
-    if (error) {
-      toast.error('Failed to delete license');
-    } else {
-      toast.success('License deleted');
-      fetchLicenses();
+    if (!confirm('Delete this license permanently?')) return;
+    
+    const { data: license } = await supabase
+      .from('licenses')
+      .select('restaurant_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    await supabase.from('licenses').delete().eq('id', id);
+
+    if (license?.restaurant_id) {
+      await supabase
+        .from('restaurants')
+        .update({ is_active: false } as any)
+        .eq('id', license.restaurant_id);
     }
+
+    toast.success('License deleted');
+    fetchLicenses();
   };
 
-  if (!isAuthenticated) {
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`);
+  };
+
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
+
+  if (!authed) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <Card className="w-full max-w-sm border-gray-800 bg-gray-900 text-white">
-          <CardHeader className="text-center pb-4">
-            <div className="mx-auto h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center mb-4">
-              <Shield className="h-6 w-6 text-blue-400" />
+      <div className="flex min-h-screen items-center justify-center bg-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="items-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground mb-2">
+              <Shield className="h-8 w-8" />
             </div>
-            <CardTitle className="text-xl">Company HQ Login</CardTitle>
-            <CardDescription className="text-gray-400">Master access for software distribution</CardDescription>
+            <CardTitle className="text-xl">Super Admin Panel</CardTitle>
+            <p className="text-sm text-muted-foreground">RestaurantOS License Management</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="hq_password">Master Password</Label>
-                <Input 
-                  id="hq_password"
-                  type="password" 
-                  value={hqPassword} 
-                  onChange={e => setHqPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700 focus-visible:ring-blue-500 text-white"
-                  placeholder="Enter HQ Password"
-                />
+                <Label>Email</Label>
+                <Input name="email" type="email" placeholder="admin@restaurantos.test" required />
               </div>
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">Access Console</Button>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input name="password" type="password" placeholder="••••••••" required />
+              </div>
+              <Button type="submit" className="w-full">Sign In</Button>
             </form>
           </CardContent>
         </Card>
@@ -240,201 +230,231 @@ export default function SuperAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans">
-      <div className="max-w-6xl mx-auto space-y-6 text-slate-900">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">License Management HQ</h1>
-              <p className="text-sm text-gray-500">Manage client restaurant installations & credentials</p>
-            </div>
+    <div className="min-h-screen bg-muted">
+      <header className="bg-card border-b px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <Shield className="h-5 w-5" />
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={fetchLicenses} className="text-slate-700 border-slate-200"><RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh</Button>
-            <Button onClick={() => { setEditingLicense(null); setShowAdd(true); }} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" /> Issue New License</Button>
-            <Button variant="ghost" onClick={() => setIsAuthenticated(false)} className="text-red-600 hover:text-red-700 hover:bg-red-50"><LogOut className="h-4 w-4" /></Button>
+          <div>
+            <h1 className="text-lg font-bold">RestaurantOS — Super Admin</h1>
+            <p className="text-xs text-muted-foreground">License & Credential Management</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchLicenses}><RefreshCw className="h-4 w-4 mr-1" /> Refresh</Button>
+          <Button variant="ghost" size="sm" onClick={() => { supabase.auth.signOut(); setAuthed(false); }}><LogOut className="h-4 w-4 mr-1" /> Logout</Button>
+        </div>
+      </header>
 
-        {/* Pricing Guide Card */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none shadow-lg">
-            <CardHeader className="pb-1 pt-4"><CardTitle className="text-xs uppercase tracking-wider opacity-80">Yearly Plan</CardTitle></CardHeader>
-            <CardContent className="pb-4">
-              <div className="text-2xl font-bold">₹9,999</div>
-              <p className="text-[10px] opacity-70">Full professional access</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none shadow-lg">
-            <CardHeader className="pb-1 pt-4"><CardTitle className="text-xs uppercase tracking-wider opacity-80">One-Time Fee</CardTitle></CardHeader>
-            <CardContent className="pb-4">
-              <div className="text-2xl font-bold">₹24,999</div>
-              <p className="text-[10px] opacity-70">Lifetime permanent use</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-amber-500 to-primary text-white border-none shadow-lg">
-            <CardHeader className="pb-1 pt-4"><CardTitle className="text-xs uppercase tracking-wider opacity-80">Yearly Renewal (AMC)</CardTitle></CardHeader>
-            <CardContent className="pb-4">
-              <div className="text-2xl font-bold">₹3,000</div>
-              <p className="text-[10px] opacity-70">Annual support & updates</p>
-            </CardContent>
-          </Card>
+      <main className="p-6 max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Licenses ({licenses.length})</h2>
+            <p className="text-sm text-muted-foreground">Manage restaurant subscriptions and credentials</p>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-8 text-xs font-semibold"><Plus className="h-3.5 w-3.5 mr-1" /> New License</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md p-5 gap-3">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold">Create New Restaurant License</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 pt-1 text-xs">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-medium text-muted-foreground">Restaurant Name</Label>
+                  <Input className="h-8 text-xs" value={form.restaurant_name} onChange={e => setForm(f => ({ ...f, restaurant_name: e.target.value }))} placeholder="Taj Kitchen" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">Admin Login Username / Email</Label>
+                    <Input className="h-8 text-xs" value={form.admin_username} onChange={e => setForm(f => ({ ...f, admin_username: e.target.value }))} placeholder="admin@tajkitchen.com or admin" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">Admin Password</Label>
+                    <Input className="h-8 text-xs" value={form.admin_password} onChange={e => setForm(f => ({ ...f, admin_password: e.target.value }))} placeholder="Strong password" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">Client Contact Email</Label>
+                    <Input type="email" className="h-8 text-xs" value={form.client_email} onChange={e => setForm(f => ({ ...f, client_email: e.target.value }))} placeholder="owner@gmail.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">Client Mobile</Label>
+                    <Input className="h-8 text-xs" value={form.client_mobile} onChange={e => setForm(f => ({ ...f, client_mobile: e.target.value }))} placeholder="+91 9876543210" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">Subscription Plan</Label>
+                    <Select value={form.subscription_plan} onValueChange={v => setForm(f => ({ ...f, subscription_plan: v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {['Trial (7 Days)', 'Starter', 'Standard', 'Premium'].map(p => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">License Expires On</Label>
+                    <Input type="date" className="h-8 text-xs" value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-medium text-muted-foreground">Account Details / Notes</Label>
+                  <textarea
+                    value={form.account_details}
+                    onChange={e => setForm(f => ({ ...f, account_details: e.target.value }))}
+                    className="flex min-h-[50px] w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    placeholder="Billing notes, payment logs..."
+                  />
+                </div>
+                <Button className="w-full h-8 text-xs font-semibold mt-1" onClick={createLicense}>Create License & Account</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="max-w-md p-5 gap-3">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold">Edit Restaurant License & Credentials</DialogTitle>
+              </DialogHeader>
+              {editForm && (
+                <div className="space-y-3 pt-1 text-xs">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">Restaurant Name</Label>
+                    <Input className="h-8 text-xs" value={editForm.restaurant_name} onChange={e => setEditForm(f => f ? ({ ...f, restaurant_name: e.target.value }) : null)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">Login Email / Username</Label>
+                      <Input className="h-8 text-xs" value={editForm.admin_username} onChange={e => setEditForm(f => f ? ({ ...f, admin_username: e.target.value }) : null)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">Login Password</Label>
+                      <Input className="h-8 text-xs" value={editForm.admin_password} onChange={e => setEditForm(f => f ? ({ ...f, admin_password: e.target.value }) : null)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">Client Email</Label>
+                      <Input type="email" className="h-8 text-xs" value={editForm.client_email || ''} onChange={e => setEditForm(f => f ? ({ ...f, client_email: e.target.value }) : null)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">Client Mobile</Label>
+                      <Input className="h-8 text-xs" value={editForm.client_mobile || ''} onChange={e => setEditForm(f => f ? ({ ...f, client_mobile: e.target.value }) : null)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">Subscription Plan</Label>
+                      <Select value={editForm.subscription_plan || 'Standard'} onValueChange={v => setEditForm(f => f ? ({ ...f, subscription_plan: v }) : null)}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {['Trial (7 Days)', 'Starter', 'Standard', 'Premium'].map(p => <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-medium text-muted-foreground">License Expires On</Label>
+                      <Input type="date" className="h-8 text-xs" value={editForm.expires_at ? editForm.expires_at.split('T')[0] : ''} onChange={e => setEditForm(f => f ? ({ ...f, expires_at: new Date(e.target.value).toISOString() }) : null)} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-medium text-muted-foreground">Account Details / Notes</Label>
+                    <textarea
+                      value={editForm.account_details || ''}
+                      onChange={e => setEditForm(f => f ? ({ ...f, account_details: e.target.value }) : null)}
+                      className="flex min-h-[50px] w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                  </div>
+                  <Button className="w-full h-8 text-xs font-semibold mt-1" onClick={updateLicense}>Save Changes</Button>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* Licenses Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {licenses.map(lic => {
-            const isExpired = new Date(lic.expires_at) < new Date();
-            return (
-              <Card key={lic.id} className={`border-2 transition-all hover:shadow-md ${!lic.is_active || isExpired ? 'border-gray-200 opacity-75' : 'border-blue-100 bg-white'}`}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg font-bold truncate pr-2">{lic.restaurant_name}</CardTitle>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <Badge variant={lic.is_active && !isExpired ? 'default' : 'destructive'} className={lic.is_active && !isExpired ? 'bg-green-500' : ''}>
-                        {isExpired ? 'Expired' : lic.is_active ? 'Active' : 'Revoked'}
-                      </Badge>
-                      <span className="text-[9px] font-black text-blue-700 uppercase tracking-tighter">{lic.subscription_plan || 'TRIAL'}</span>
-                    </div>
+        <div className="grid gap-3">
+          {licenses.length === 0 && (
+            <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No licenses yet. Create one to get started.</CardContent></Card>
+          )}
+          {licenses.map(lic => (
+            <Card key={lic.id} className={`border border-border shadow-sm transition-opacity ${!lic.is_active ? 'opacity-60' : ''}`}>
+              <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-4">
+                <div className="flex-1 space-y-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-base text-foreground mr-1">{lic.restaurant_name}</span>
+                    <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-semibold">{lic.subscription_plan || 'Standard'}</span>
+                    <Badge variant={lic.is_active ? 'default' : 'secondary'} className="text-[10px] py-0">{lic.is_active ? 'Active' : 'Inactive'}</Badge>
+                    {new Date(lic.expires_at) < new Date() && <Badge variant="destructive" className="text-[10px] py-0">Expired</Badge>}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-slate-50 p-3 rounded-md border border-slate-200 font-mono text-xs relative group">
-                    <div className="text-slate-500 text-[10px] mb-1 font-sans font-medium">LICENSE KEY</div>
-                    <div className="font-bold tracking-wider">{lic.license_key}</div>
-                    <Button variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => copyToClipboard(lic.license_key)}>
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[10px] bg-blue-50/30 border border-blue-100 rounded-md p-2">
-                    <div>
-                      <span className="text-slate-400 block uppercase font-bold">Admin User</span>
-                      <span className="font-semibold text-slate-700">{lic.admin_username}</span>
+                  <div className="grid gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 text-[11px]">
+                    <div className="flex items-center gap-1">
+                      <span>Key:</span>
+                      <code className="bg-muted px-1 rounded font-mono text-[10px] text-foreground">{lic.license_key}</code>
+                      <button onClick={() => copyToClipboard(lic.license_key, 'License key')} className="text-primary hover:opacity-80"><Copy className="h-3 w-3" /></button>
                     </div>
-                    <div>
-                        <span className="text-slate-400 block uppercase font-bold">Admin Pass</span>
-                        <span className="font-mono text-slate-700">{lic.admin_password}</span>
+                    <div className="flex items-center gap-1">
+                      <span>Login:</span>
+                      <code className="bg-muted px-1 rounded font-mono text-[10px] text-foreground">{lic.admin_username}</code>
+                      <button onClick={() => copyToClipboard(lic.admin_username, 'Username')} className="text-primary hover:opacity-80"><Copy className="h-3 w-3" /></button>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-50 border border-slate-100 rounded-md p-2">
-                    <div className="col-span-1">
-                      <span className="text-slate-400 block uppercase font-bold text-[8px]">Client Phone</span>
-                      <span className="font-semibold text-slate-700">{lic.client_mobile || '-'}</span>
+                    <div className="flex items-center gap-1">
+                      <span>Pass:</span>
+                      {showPasswords[lic.id] ? (
+                        <>
+                          <code className="bg-muted px-1 rounded font-mono text-[10px] text-foreground">{lic.admin_password}</code>
+                          <button onClick={() => copyToClipboard(lic.admin_password, 'Password')} className="text-primary hover:opacity-80"><Copy className="h-3 w-3" /></button>
+                        </>
+                      ) : (
+                        <code className="bg-muted px-1 rounded font-mono text-[10px] text-foreground">••••••••</code>
+                      )}
+                      <button onClick={() => setShowPasswords(s => ({ ...s, [lic.id]: !s[lic.id] }))} className="text-muted-foreground hover:text-foreground">
+                        {showPasswords[lic.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </button>
                     </div>
-                    <div className="col-span-1">
-                      <span className="text-slate-400 block uppercase font-bold text-[8px]">Client Email</span>
-                      <span className="font-semibold text-slate-700 break-all">{lic.client_email || '-'}</span>
+                    {lic.client_email && (
+                      <div className="flex items-center gap-1 col-span-1">
+                        <span>Client Email:</span>
+                        <span className="text-foreground font-medium">{lic.client_email}</span>
+                      </div>
+                    )}
+                    {lic.client_mobile && (
+                      <div className="flex items-center gap-1 col-span-1">
+                        <span>Mobile:</span>
+                        <span className="text-foreground font-medium">{lic.client_mobile}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <span>Expires:</span>
+                      <span className="text-foreground font-medium">{format(new Date(lic.expires_at), 'dd MMM yyyy')}</span>
                     </div>
-                    <div className="col-span-2 border-t pt-1 mt-1">
-                      <span className="text-slate-400 block uppercase font-bold text-[8px]">Bank/Account Details</span>
-                      <span className="font-medium text-slate-600 leading-tight">{lic.account_details || 'N/A'}</span>
-                    </div>
+                    {lic.account_details && (
+                      <div className="col-span-full mt-1 bg-muted/30 p-2 rounded border border-border/40 text-[10px] text-muted-foreground">
+                        <span className="font-semibold block text-[9px] uppercase tracking-wider text-muted-foreground/80 mb-0.5">Notes & Billing Details</span>
+                        {lic.account_details}
+                      </div>
+                    )}
                   </div>
-
-                  <div className="flex items-center text-[10px] text-gray-500 font-medium pt-1">
-                    <Calendar className="h-3 w-3 mr-1 text-blue-500" /> Valid until: {new Date(lic.expires_at).toLocaleDateString('en-GB')}
-                  </div>
-
-                  <div className="flex gap-2 pt-3 border-t">
-                    <Button variant="outline" size="sm" className="flex-1 text-[10px] h-8 font-bold border-slate-200" onClick={() => openEdit(lic)}>
-                      Update Details
-                    </Button>
-                    <Button variant="outline" size="sm" className={`flex-1 text-[10px] h-8 font-bold ${lic.is_active ? 'text-amber-600 border-amber-100' : 'text-green-600 border-green-100'}`} onClick={() => toggleStatus(lic.id, lic.is_active)}>
-                      {lic.is_active ? 'Revoke' : 'Restore'}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteLicense(lic.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => { setEditForm(lic); setEditDialogOpen(true); }}>
+                    <Edit className="h-3 w-3 mr-1" /> Edit
+                  </Button>
+                  <Button size="sm" variant={lic.is_active ? 'outline' : 'default'} className="h-7 text-[11px]" onClick={() => toggleActive(lic.id, lic.is_active)}>
+                    {lic.is_active ? 'Deactivate' : 'Activate'}
+                  </Button>
+                  <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => deleteLicense(lic.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-
-        {/* Issue/Edit License Dialog */}
-        <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogContent className="sm:max-w-[450px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {editingLicense ? <RefreshCw className="h-5 w-5 text-blue-600" /> : <Plus className="h-5 w-5 text-blue-600" />}
-                {editingLicense ? 'Update Customer Details' : 'Issue New Software License'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4 text-slate-900">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-slate-500">Restaurant / Business Name</Label>
-                <Input value={formData.restaurant_name} onChange={e => setFormData({...formData, restaurant_name: e.target.value})} placeholder="e.g. Spice Route" className="bg-slate-50" />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Master Username</Label>
-                  <Input value={formData.admin_username} onChange={e => setFormData({...formData, admin_username: e.target.value})} className="bg-slate-50" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Master Password</Label>
-                  <Input value={formData.admin_password} onChange={e => setFormData({...formData, admin_password: e.target.value})} className="bg-slate-50" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Client Email</Label>
-                  <Input type="email" value={formData.client_email} onChange={e => setFormData({...formData, client_email: e.target.value})} placeholder="owner@gmail.com" className="bg-slate-50" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Client Mobile</Label>
-                  <Input value={formData.client_mobile} onChange={e => setFormData({...formData, client_mobile: e.target.value})} placeholder="+91..." className="bg-slate-50" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-slate-500">Bank / UPI Account Details</Label>
-                <Input value={formData.account_details} onChange={e => setFormData({...formData, account_details: e.target.value})} placeholder="Bank A/C Number, IFSC, or UPI ID" className="bg-slate-50" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Subscription Plan</Label>
-                  <select 
-                    className="w-full h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-                    value={formData.subscription_plan} 
-                    onChange={e => setFormData({...formData, subscription_plan: e.target.value})}
-                  >
-                    <option value="Trial (7 Days)">Trial (7 Days)</option>
-                    <option value="Yearly (Paid)">Yearly (Paid)</option>
-                    <option value="Lifetime (Paid)">Lifetime (Paid)</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-slate-500">{editingLicense ? 'Extend (Months)' : 'Validity (Months)'}</Label>
-                  <Input type="number" min="0" max="120" value={formData.validity_months} onChange={e => setFormData({...formData, validity_months: parseInt(e.target.value)})} className="bg-slate-50" />
-                </div>
-              </div>
-              
-              <div className="bg-blue-50 text-blue-800 p-3 rounded text-[10px] leading-relaxed border border-blue-200 font-medium">
-                {editingLicense 
-                  ? "Changing details here will update the client's records immediately. Use 'Extend' to add extra time to their current active license."
-                  : "This will generate a secure license key. The client must enter this specific key on their terminal to unlock the software."}
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={closeDialog} className="text-slate-600 border-slate-200">Cancel Action</Button>
-              <Button onClick={editingLicense ? updateLicense : createLicense} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200" disabled={loading}>
-                {editingLicense ? 'Save Changes' : 'Generate License'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      </main>
     </div>
   );
 }

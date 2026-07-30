@@ -1,771 +1,693 @@
 import { useState, useEffect } from 'react';
-import { Save, Store, MapPin, Receipt, CreditCard, Printer, Users, ChevronRight, Check, X, Plus, Trash2, Edit2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  useRestaurant,
+  useTaxConfig,
+  usePrinters,
+  useMenuCategories,
+  useMenuItems,
+  useUpdateRestaurant,
+  useUpsertTaxConfig,
+  useSavePrinter,
+  useDeletePrinter,
+  useSaveCategory,
+  useDeleteCategory,
+  useSaveMenuItem,
+  useDeleteMenuItem,
+} from '@/hooks/useRestaurantData';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import { db, type RestaurantProfile, type TaxConfig, type PaymentMethod, type PrinterConfig, type Floor, type TableConfig, type MenuCategory, type MenuItem } from '@/lib/db';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { Loader2, Plus, Trash2, Printer, Pencil, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
-export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('restaurant');
+export default function Settings() {
+  const { profile } = useAuth();
+  const restaurantId = profile?.restaurant_id;
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-      </div>
+  const { data: restaurant, isLoading: loadingRest } = useRestaurant(restaurantId);
+  const { data: taxConfig, isLoading: loadingTax } = useTaxConfig(restaurantId);
+  const { data: printers, isLoading: loadingPrinters } = usePrinters(restaurantId);
+  const { data: categories, isLoading: loadingCats } = useMenuCategories(restaurantId);
+  const { data: items, isLoading: loadingItems } = useMenuItems(restaurantId);
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6 w-full h-auto">
-          <TabsTrigger value="restaurant" className="text-xs gap-1.5 py-2.5"><Store className="h-3.5 w-3.5" />Restaurant</TabsTrigger>
-          <TabsTrigger value="floors" className="text-xs gap-1.5 py-2.5"><MapPin className="h-3.5 w-3.5" />Floors & Tables</TabsTrigger>
-          <TabsTrigger value="menu" className="text-xs gap-1.5 py-2.5"><Receipt className="h-3.5 w-3.5" />Menu</TabsTrigger>
-          <TabsTrigger value="tax" className="text-xs gap-1.5 py-2.5"><Receipt className="h-3.5 w-3.5" />Tax & Charges</TabsTrigger>
-          <TabsTrigger value="payment" className="text-xs gap-1.5 py-2.5"><CreditCard className="h-3.5 w-3.5" />Payment</TabsTrigger>
-          <TabsTrigger value="printer" className="text-xs gap-1.5 py-2.5"><Printer className="h-3.5 w-3.5" />Printer</TabsTrigger>
-        </TabsList>
+  const updateRestMut = useUpdateRestaurant();
+  const upsertTaxMut = useUpsertTaxConfig();
+  const savePrinterMut = useSavePrinter();
+  const deletePrinterMut = useDeletePrinter();
+  const saveCategoryMut = useSaveCategory();
+  const deleteCategoryMut = useDeleteCategory();
+  const saveMenuItemMut = useSaveMenuItem();
+  const deleteMenuItemMut = useDeleteMenuItem();
 
-        <TabsContent value="restaurant"><RestaurantSettings /></TabsContent>
-        <TabsContent value="floors"><FloorSettings /></TabsContent>
-        <TabsContent value="menu"><MenuSettings /></TabsContent>
-        <TabsContent value="tax"><TaxSettings /></TabsContent>
-        <TabsContent value="payment"><PaymentSettings /></TabsContent>
-        <TabsContent value="printer"><PrinterSettings /></TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
-function RestaurantSettings() {
-  const restaurant = useLiveQuery(() => db.restaurant.toCollection().first());
-  const [form, setForm] = useState<Partial<RestaurantProfile>>({});
+  // 1. Profile State
+  const [profileForm, setProfileForm] = useState<Record<string, any>>({});
+  // 2. UPI State
+  const [upiForm, setUpiForm] = useState({ upi_id: '', upi_name: '' });
+  // 3. Tax State
+  const [taxForm, setTaxForm] = useState<Record<string, any>>({});
+  // 4. Printer States
+  const [editingPrinter, setEditingPrinter] = useState<any>(null);
+  const [isPrinterOpen, setIsPrinterOpen] = useState(false);
+  // 5. Menu Categories/Items States
+  const [selectedCat, setSelectedCat] = useState<string>('');
+  const [editingCat, setEditingCat] = useState<any>(null);
+  const [isCatOpen, setIsCatOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [isItemOpen, setIsItemOpen] = useState(false);
 
   useEffect(() => {
-    if (restaurant) setForm(restaurant);
+    if (restaurant) {
+      setProfileForm({
+        name: restaurant.name || '',
+        phone: restaurant.phone || '',
+        email: restaurant.email || '',
+        website: restaurant.website || '',
+        instagram: restaurant.instagram || '',
+        facebook: restaurant.facebook || '',
+        address_1: restaurant.address_1 || '',
+        address_2: restaurant.address_2 || '',
+        city: restaurant.city || '',
+        state: restaurant.state || '',
+        pin: restaurant.pin || '',
+        gstin: restaurant.gstin || '',
+        fssai: restaurant.fssai || '',
+        pan: restaurant.pan || '',
+      });
+      const settings = (restaurant.settings as any) || {};
+      setUpiForm({
+        upi_id: settings.upi_id || '',
+        upi_name: settings.upi_name || '',
+      });
+    }
   }, [restaurant]);
 
-  const handleSave = async () => {
-    if (!form.id) return;
-    await db.restaurant.update(form.id, { ...form, updated_at: new Date() });
-    toast.success('Restaurant profile saved');
+  useEffect(() => {
+    if (taxConfig) {
+      setTaxForm({
+        service_charge_enabled: !!taxConfig.service_charge_enabled,
+        service_charge_pct: String(taxConfig.service_charge_pct || 0),
+        packaging_charge: String(taxConfig.packaging_charge || 0),
+        round_off: taxConfig.round_off || 'nearest',
+      });
+    }
+  }, [taxConfig]);
+
+  useEffect(() => {
+    if (categories && categories.length > 0 && !selectedCat) {
+      setSelectedCat(categories[0].id);
+    }
+  }, [categories, selectedCat]);
+
+  if (loadingRest || loadingTax || loadingPrinters || loadingCats || loadingItems) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const handleSaveProfile = () => {
+    if (!restaurantId) return;
+    updateRestMut.mutate({ id: restaurantId, payload: profileForm });
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Restaurant Profile</CardTitle>
-        <CardDescription>Configure your restaurant's basic information</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Restaurant Name *</Label>
-            <Input value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="My Restaurant" />
-          </div>
-          <div className="space-y-2">
-            <Label>Cuisine Type</Label>
-            <Input value={form.cuisine_type || ''} onChange={e => setForm(f => ({ ...f, cuisine_type: e.target.value }))} placeholder="Multi-Cuisine" />
-          </div>
-          <div className="space-y-2">
-            <Label>Restaurant Type</Label>
-            <Select value={form.restaurant_type} onValueChange={v => setForm(f => ({ ...f, restaurant_type: v as any }))}>
-              <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fine_dining">Fine Dining</SelectItem>
-                <SelectItem value="casual">Casual Dining</SelectItem>
-                <SelectItem value="qsr">QSR / Fast Food</SelectItem>
-                <SelectItem value="cloud_kitchen">Cloud Kitchen</SelectItem>
-                <SelectItem value="cafe">Cafe</SelectItem>
-                <SelectItem value="bar">Bar & Lounge</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Tagline</Label>
-            <Input value={form.tagline || ''} onChange={e => setForm(f => ({ ...f, tagline: e.target.value }))} placeholder="Taste of Tradition" />
-          </div>
-        </div>
-
-        <Separator />
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2 space-y-2">
-            <Label>Address</Label>
-            <Textarea value={form.address || ''} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Full address" className="min-h-[60px]" />
-          </div>
-          <div className="space-y-2">
-            <Label>City</Label>
-            <Input value={form.city || ''} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>State</Label>
-            <Input value={form.state || ''} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Pincode</Label>
-            <Input value={form.pincode || ''} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input value={form.phone || ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input value={form.email || ''} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Website</Label>
-            <Input value={form.website || ''} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} />
-          </div>
-        </div>
-
-        <Separator />
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>GSTIN</Label>
-            <Input value={form.gstin || ''} onChange={e => setForm(f => ({ ...f, gstin: e.target.value }))} placeholder="22AAAAA0000A1Z5" />
-          </div>
-          <div className="space-y-2">
-            <Label>FSSAI License</Label>
-            <Input value={form.fssai_license || ''} onChange={e => setForm(f => ({ ...f, fssai_license: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>PAN Number</Label>
-            <Input value={form.pan_number || ''} onChange={e => setForm(f => ({ ...f, pan_number: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>UPI ID</Label>
-            <Input value={form.upi_id || ''} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} placeholder="myrestaurant@upi" />
-          </div>
-        </div>
-
-        <Button onClick={handleSave} className="gap-2">
-          <Save className="h-4 w-4" /> Save Profile
-        </Button>
-
-        <Separator />
-        
-        <div className="pt-4">
-          <h4 className="text-sm font-semibold text-destructive mb-1">Danger Zone</h4>
-          <p className="text-xs text-muted-foreground mb-4">Resetting the database will delete all current data and restore the default demo items and tables.</p>
-          <Button 
-            variant="outline" 
-            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground gap-2"
-            onClick={async () => {
-              if (confirm('Are you sure? This will delete all your current work and restore demo data.')) {
-                const { clearAllData, seedDatabase } = await import('@/lib/db');
-                await clearAllData();
-                await seedDatabase();
-                toast.success('Database reset successfully! Reloading...');
-                setTimeout(() => window.location.reload(), 1000);
-              }
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Reset Demo Data
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function FloorSettings() {
-  const floors = useLiveQuery(() => db.floors.orderBy('display_order').toArray()) || [];
-  const tables = useLiveQuery(() => db.restaurantTables.toArray()) || [];
-  const [newFloor, setNewFloor] = useState('');
-  const [editTable, setEditTable] = useState<Partial<TableConfig> | null>(null);
-
-  const addFloor = async () => {
-    if (!newFloor.trim()) return;
-    await db.floors.add({ name: newFloor, display_order: floors.length, is_active: true });
-    setNewFloor('');
-    toast.success('Floor added');
+  const handleSaveUPI = () => {
+    if (!restaurantId || !restaurant) return;
+    const currentSettings = (restaurant.settings as any) || {};
+    const updatedSettings = {
+      ...currentSettings,
+      upi_id: upiForm.upi_id,
+      upi_name: upiForm.upi_name,
+    };
+    updateRestMut.mutate({ id: restaurantId, payload: { settings: updatedSettings } });
   };
 
-  const deleteFloor = async (id: number) => {
-    await db.floors.delete(id);
-    await db.restaurantTables.where('floor_id').equals(id).delete();
-    toast.success('Floor deleted');
-  };
-
-  const addTable = async (floorId: number) => {
-    const floorTables = tables.filter(t => t.floor_id === floorId);
-    const nextNum = floorTables.length + 1;
-    await db.restaurantTables.add({
-      floor_id: floorId,
-      number: `T${tables.length + 1}`,
-      capacity: 4,
-      shape: 'square',
-      status: 'available',
-      is_active: true,
+  const handleSaveTax = () => {
+    if (!restaurantId) return;
+    upsertTaxMut.mutate({
+      restaurantId,
+      payload: {
+        service_charge_enabled: !!taxForm.service_charge_enabled,
+        service_charge_pct: Number(taxForm.service_charge_pct),
+        packaging_charge: Number(taxForm.packaging_charge),
+        round_off: taxForm.round_off,
+      },
     });
-    toast.success('Table added');
   };
 
-  const saveTable = async () => {
-    if (!editTable?.id) return;
-    await db.restaurantTables.update(editTable.id, editTable);
-    setEditTable(null);
-    toast.success('Table updated');
+  const openAddPrinter = () => {
+    setEditingPrinter({
+      name: '',
+      type: 'Bill',
+      connection: 'USB',
+      ipAddress: '',
+      paperWidth: '80mm',
+      isDefault: false,
+      hasCashDrawer: false,
+    });
+    setIsPrinterOpen(true);
   };
 
-  const deleteTable = async (id: number) => {
-    await db.restaurantTables.delete(id);
-    toast.success('Table deleted');
+  const handleSavePrinter = () => {
+    if (!restaurantId || !editingPrinter) return;
+    savePrinterMut.mutate({
+      id: editingPrinter.id,
+      restaurantId,
+      payload: editingPrinter,
+    }, {
+      onSuccess: () => setIsPrinterOpen(false)
+    });
+  };
+
+  const openAddCategory = () => {
+    setEditingCat({ name: '', type: 'both', is_active: true });
+    setIsCatOpen(true);
+  };
+
+  const handleSaveCategory = () => {
+    if (!restaurantId || !editingCat) return;
+    saveCategoryMut.mutate({
+      id: editingCat.id,
+      restaurantId,
+      payload: editingCat,
+    }, {
+      onSuccess: () => setIsCatOpen(false)
+    });
+  };
+
+  const openAddItem = () => {
+    setEditingItem({
+      category_id: selectedCat,
+      name: '',
+      price: '',
+      item_type: 'Veg',
+      is_available: true,
+      description: '',
+    });
+    setIsItemOpen(true);
+  };
+
+  const handleSaveItem = () => {
+    if (!restaurantId || !editingItem) return;
+    saveMenuItemMut.mutate({
+      id: editingItem.id,
+      restaurantId,
+      payload: editingItem,
+    }, {
+      onSuccess: () => setIsItemOpen(false)
+    });
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Floor & Table Configuration</CardTitle>
-          <CardDescription>Define dining areas and table layout</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input value={newFloor} onChange={e => setNewFloor(e.target.value)} placeholder="New floor name (e.g. Rooftop)" className="max-w-xs" />
-            <Button onClick={addFloor} size="sm" className="gap-1"><Plus className="h-3.5 w-3.5" /> Add Floor</Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+          <p className="text-sm text-muted-foreground">Manage your restaurant preferences, taxes, printers, and menu items.</p>
+        </div>
+      </div>
 
-          {floors.map(floor => (
-            <div key={floor.id} className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-foreground">{floor.name}</h3>
-                  <Badge variant="outline">{tables.filter(t => t.floor_id === floor.id).length} tables</Badge>
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto gap-2 bg-transparent p-0 mb-6">
+          <TabsTrigger value="profile" className="border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 rounded-lg">Profile Details</TabsTrigger>
+          <TabsTrigger value="upi" className="border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 rounded-lg">UPI Setup</TabsTrigger>
+          <TabsTrigger value="tax" className="border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 rounded-lg">Taxes & Service</TabsTrigger>
+          <TabsTrigger value="printers" className="border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 rounded-lg">Printers</TabsTrigger>
+          <TabsTrigger value="menu" className="border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 rounded-lg">Menu Setup</TabsTrigger>
+        </TabsList>
+
+        {/* 1. PROFILE DETAILS */}
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle>Restaurant Profile</CardTitle>
+              <CardDescription>Update your general restaurant metadata and legal registrations.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Restaurant Name *</Label>
+                  <Input value={profileForm.name ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, name: e.target.value }))} />
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={() => addTable(floor.id!)} className="gap-1 text-xs">
-                    <Plus className="h-3 w-3" /> Add Table
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => deleteFloor(floor.id!)} className="text-destructive h-8 w-8 p-0">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input value={profileForm.phone ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, phone: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input type="email" value={profileForm.email ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, email: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Website</Label>
+                  <Input value={profileForm.website ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, website: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Address Line 1</Label>
+                  <Input value={profileForm.address_1 ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, address_1: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Address Line 2</Label>
+                  <Input value={profileForm.address_2 ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, address_2: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>City</Label>
+                    <Input value={profileForm.city ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, city: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>PIN Code</Label>
+                    <Input value={profileForm.pin ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, pin: e.target.value }))} maxLength={6} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>State</Label>
+                  <Input value={profileForm.state ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, state: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>GSTIN</Label>
+                  <Input value={profileForm.gstin ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, gstin: e.target.value.toUpperCase() }))} maxLength={15} />
+                </div>
+                <div className="space-y-2">
+                  <Label>FSSAI License</Label>
+                  <Input value={profileForm.fssai ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, fssai: e.target.value }))} maxLength={14} />
+                </div>
+                <div className="space-y-2">
+                  <Label>PAN Number</Label>
+                  <Input value={profileForm.pan ?? ''} onChange={(e) => setProfileForm(p => ({ ...p, pan: e.target.value.toUpperCase() }))} maxLength={10} />
                 </div>
               </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveProfile} disabled={updateRestMut.isPending}>
+                {updateRestMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Profile
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
 
-              <div className="grid grid-cols-6 gap-2">
-                {tables.filter(t => t.floor_id === floor.id).map(table => (
-                  <div key={table.id} className="rounded-lg border p-2 text-center text-xs space-y-1 group relative">
-                    <div className="font-bold text-foreground">{table.number}</div>
-                    <div className="text-muted-foreground">{table.capacity} seats</div>
-                    <div className="text-muted-foreground capitalize">{table.shape}</div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-1 flex gap-0.5">
-                      <button onClick={() => setEditTable(table)} className="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
-                        <Edit2 className="h-2.5 w-2.5 text-primary" />
-                      </button>
-                      <button onClick={() => deleteTable(table.id!)} className="h-5 w-5 rounded bg-destructive/10 flex items-center justify-center">
-                        <Trash2 className="h-2.5 w-2.5 text-destructive" />
-                      </button>
+        {/* 2. UPI SETUP */}
+        <TabsContent value="upi">
+          <Card>
+            <CardHeader>
+              <CardTitle>UPI QR Payments Setup</CardTitle>
+              <CardDescription>Configure your merchant UPI address to dynamically show payment QR codes during checkout.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 max-w-lg">
+              <div className="space-y-2">
+                <Label>Merchant UPI ID (VPA) *</Label>
+                <Input placeholder="merchant@upi" value={upiForm.upi_id} onChange={(e) => setUpiForm(p => ({ ...p, upi_id: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">The actual address payments will be deposited to (e.g. name@okhdfcbank).</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Merchant Name *</Label>
+                <Input placeholder="Ninja Cafe" value={upiForm.upi_name} onChange={(e) => setUpiForm(p => ({ ...p, upi_name: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">The display name customer will see in their UPI app.</p>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveUPI} disabled={updateRestMut.isPending}>
+                {updateRestMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save UPI Configuration
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        {/* 3. TAXES & SERVICE CHARGES */}
+        <TabsContent value="tax">
+          <Card>
+            <CardHeader>
+              <CardTitle>Taxes & Charges</CardTitle>
+              <CardDescription>Setup default parameters for GST slabs, service charge rules, and bill round-offs.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5 max-w-lg">
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-semibold">Enable Service Charge</Label>
+                  <p className="text-xs text-muted-foreground">Apply service charge as a percentage of order subtotal.</p>
+                </div>
+                <Switch
+                  checked={!!taxForm.service_charge_enabled}
+                  onCheckedChange={(val) => setTaxForm(p => ({ ...p, service_charge_enabled: val }))}
+                />
+              </div>
+
+              {taxForm.service_charge_enabled && (
+                <div className="space-y-2">
+                  <Label>Service Charge %</Label>
+                  <Input type="number" value={taxForm.service_charge_pct ?? '0'} onChange={(e) => setTaxForm(p => ({ ...p, service_charge_pct: e.target.value }))} />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Packaging Charge (₹)</Label>
+                <Input type="number" value={taxForm.packaging_charge ?? '0'} onChange={(e) => setTaxForm(p => ({ ...p, packaging_charge: e.target.value }))} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Invoice Round-off Method</Label>
+                <Select value={taxForm.round_off} onValueChange={(val) => setTaxForm(p => ({ ...p, round_off: val }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nearest">Nearest Rupee (Standard)</SelectItem>
+                    <SelectItem value="fifty">Nearest 50 Paise</SelectItem>
+                    <SelectItem value="none">Disable Round-off</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveTax} disabled={upsertTaxMut.isPending}>
+                {upsertTaxMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Tax Configuration
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        {/* 4. PRINTER NETWORKS */}
+        <TabsContent value="printers">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>Printers</CardTitle>
+                <CardDescription>Register thermal billing and Kitchen Order Ticket (KOT) printers.</CardDescription>
+              </div>
+              <Button size="sm" onClick={openAddPrinter}><Plus className="h-4 w-4 mr-1" /> Add Printer</Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 mt-4">
+                {(printers || []).map((printer: any) => (
+                  <div key={printer.id} className="flex items-center justify-between rounded-lg border p-4 hover:shadow-sm transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded bg-muted">
+                        <Printer className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm flex items-center gap-2">
+                          {printer.name}
+                          {printer.isDefault && <Badge className="bg-success/10 text-success text-[10px]" variant="outline">Default</Badge>}
+                          {printer.hasCashDrawer && <Badge className="bg-primary/10 text-primary text-[10px]" variant="outline">Drawer</Badge>}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Type: {printer.type} | Conn: {printer.connection} {printer.connection === 'LAN' && `(${printer.ipAddress})`} | Width: {printer.paperWidth}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingPrinter(printer); setIsPrinterOpen(true); }}>
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                        if (confirm('Are you sure you want to delete this printer?')) {
+                          deletePrinterMut.mutate({ id: printer.id, restaurantId: restaurantId! });
+                        }
+                      }}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
                 ))}
+                {(!printers || printers.length === 0) && (
+                  <p className="text-center text-sm text-muted-foreground py-8">No printers configured yet. Click "Add Printer" to start.</p>
+                )}
               </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <Dialog open={!!editTable} onOpenChange={() => setEditTable(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit Table</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Table Number</Label><Input value={editTable?.number || ''} onChange={e => setEditTable(t => t ? ({ ...t, number: e.target.value }) : null)} /></div>
-            <div className="space-y-1"><Label>Capacity</Label><Input type="number" value={editTable?.capacity || ''} onChange={e => setEditTable(t => t ? ({ ...t, capacity: Number(e.target.value) }) : null)} /></div>
-            <div className="space-y-1">
-              <Label>Shape</Label>
-              <Select value={editTable?.shape} onValueChange={v => setEditTable(t => t ? ({ ...t, shape: v as any }) : null)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="square">Square</SelectItem>
-                  <SelectItem value="round">Round</SelectItem>
-                  <SelectItem value="rectangle">Rectangle</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={saveTable}>Save</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function MenuSettings() {
-  const categories = useLiveQuery(() => db.menuCategories.orderBy('display_order').toArray()) || [];
-  const items = useLiveQuery(() => db.menuItems.toArray()) || [];
-  const [selectedCat, setSelectedCat] = useState<number | null>(null);
-  const [newCatName, setNewCatName] = useState('');
-  const [editItem, setEditItem] = useState<Partial<MenuItem> | null>(null);
-  const [showAddItem, setShowAddItem] = useState(false);
-
-  const addCategory = async () => {
-    if (!newCatName.trim()) return;
-    await db.menuCategories.add({ name: newCatName, display_order: categories.length, is_active: true, item_count: 0 });
-    setNewCatName('');
-    toast.success('Category added');
-  };
-
-  const deleteCategory = async (id: number) => {
-    await db.menuCategories.delete(id);
-    await db.menuItems.where('category_id').equals(id).delete();
-    toast.success('Category deleted');
-  };
-
-  const catItems = selectedCat ? items.filter(i => i.category_id === selectedCat) : [];
-
-  const saveItem = async () => {
-    if (!editItem?.name || !editItem?.price) return;
-    if (editItem.id) {
-      await db.menuItems.update(editItem.id, { ...editItem, updated_at: new Date() });
-    } else {
-      await db.menuItems.add({ ...editItem as any, created_at: new Date(), updated_at: new Date() });
-      // Update count
-      if (editItem.category_id) {
-        const count = await db.menuItems.where('category_id').equals(editItem.category_id).count();
-        await db.menuCategories.update(editItem.category_id, { item_count: count });
-      }
-    }
-    setEditItem(null);
-    setShowAddItem(false);
-    toast.success('Menu item saved');
-  };
-
-  const deleteItem = async (id: number, catId: number) => {
-    await db.menuItems.delete(id);
-    const count = await db.menuItems.where('category_id').equals(catId).count();
-    await db.menuCategories.update(catId, { item_count: count });
-    toast.success('Item deleted');
-  };
-
-  const toggleAvailability = async (item: MenuItem) => {
-    await db.menuItems.update(item.id!, { is_available: !item.is_available });
-  };
-
-  return (
-    <div className="grid grid-cols-[280px_1fr] gap-4 h-[calc(100vh-14rem)]">
-      {/* Categories sidebar */}
-      <Card className="flex flex-col">
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm">Categories</CardTitle>
-        </CardHeader>
-        <CardContent className="p-2 flex-1">
-          <div className="flex gap-1 mb-2 px-2">
-            <Input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="New category" className="h-8 text-xs" />
-            <Button size="sm" className="h-8 px-2" onClick={addCategory}><Plus className="h-3.5 w-3.5" /></Button>
-          </div>
-          <ScrollArea className="h-[calc(100vh-22rem)]">
-            {categories.map(cat => (
-              <button key={cat.id} onClick={() => setSelectedCat(cat.id!)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                  selectedCat === cat.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-foreground'
-                }`}>
-                <span className="truncate">{cat.name}</span>
-                <div className="flex items-center gap-1">
-                  <Badge variant={selectedCat === cat.id ? 'secondary' : 'outline'} className="text-[10px] h-5">
-                    {items.filter(i => i.category_id === cat.id).length}
-                  </Badge>
-                  <button onClick={(e) => { e.stopPropagation(); deleteCategory(cat.id!); }}
-                    className="h-5 w-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-destructive/10">
-                    <X className="h-3 w-3 text-destructive" />
-                  </button>
+        {/* 5. MENU SETUP */}
+        <TabsContent value="menu">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Categories column */}
+            <Card className="lg:col-span-1">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-sm">Categories</CardTitle>
                 </div>
-              </button>
-            ))}
-          </ScrollArea>
-        </CardContent>
-      </Card>
-
-      {/* Items panel */}
-      <Card className="flex flex-col">
-        <CardHeader className="py-3 px-4 flex-row items-center justify-between">
-          <CardTitle className="text-sm">{selectedCat ? categories.find(c => c.id === selectedCat)?.name : 'Select a category'}</CardTitle>
-          {selectedCat && (
-            <Button size="sm" className="gap-1 text-xs" onClick={() => { setEditItem({ category_id: selectedCat, price: 0, item_type: 'veg', is_available: true, is_hidden: false, tax_rate: 5 }); setShowAddItem(true); }}>
-              <Plus className="h-3.5 w-3.5" /> Add Item
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent className="p-2 flex-1">
-          <ScrollArea className="h-[calc(100vh-20rem)]">
-            <div className="space-y-1">
-              {catItems.map(item => (
-                <div key={item.id} className="flex items-center justify-between px-3 py-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-3 w-3 rounded-sm border-2 ${
-                      item.item_type === 'veg' ? 'border-green-600 bg-green-600' :
-                      item.item_type === 'non-veg' ? 'border-red-600 bg-red-600' :
-                      'border-amber-500 bg-amber-500'
-                    }`} />
-                    <div>
-                      <div className="font-medium text-sm text-foreground">{item.name}</div>
-                      <div className="text-xs text-muted-foreground">₹{item.price} • GST {item.tax_rate}%</div>
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={openAddCategory}><Plus className="h-4 w-4" /></Button>
+              </CardHeader>
+              <CardContent className="space-y-2 mt-2">
+                {(categories || []).map((cat: any) => (
+                  <div
+                    key={cat.id}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors cursor-pointer ${
+                      selectedCat === cat.id ? 'border-primary bg-primary/5' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => setSelectedCat(cat.id)}
+                  >
+                    <span className="font-medium text-foreground">{cat.name}</span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setEditingCat(cat); setIsCatOpen(true); }}>
+                        <Pencil className="h-3 w-3 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Deleting this category will delete all its menu items! Proceed?')) {
+                          deleteCategoryMut.mutate({ id: cat.id, restaurantId: restaurantId! });
+                        }
+                      }}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Switch checked={item.is_available} onCheckedChange={() => toggleAvailability(item)} />
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setEditItem(item); setShowAddItem(true); }}>
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteItem(item.id!, item.category_id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {selectedCat && catItems.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">No items in this category</div>
-              )}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+                ))}
+              </CardContent>
+            </Card>
 
-      {/* Edit/Add Item Dialog */}
-      <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editItem?.id ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Name *</Label><Input value={editItem?.name || ''} onChange={e => setEditItem(f => f ? ({ ...f, name: e.target.value }) : null)} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Price (₹) *</Label><Input type="number" value={editItem?.price || ''} onChange={e => setEditItem(f => f ? ({ ...f, price: Number(e.target.value) }) : null)} /></div>
+            {/* Menu Items column */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-sm">Menu Items</CardTitle>
+                </div>
+                <Button size="sm" onClick={openAddItem} disabled={!selectedCat}><Plus className="h-4 w-4 mr-1" /> Add Item</Button>
+              </CardHeader>
+              <CardContent className="space-y-3 mt-2">
+                {(items || [])
+                  .filter((item: any) => item.category_id === selectedCat)
+                  .map((item: any) => (
+                    <div key={item.id} className="flex items-center justify-between rounded-lg border p-3 hover:shadow-sm transition-all">
+                      <div>
+                        <div className="font-semibold text-sm flex items-center gap-2">
+                          {item.name}
+                          <Badge className={`text-[10px] ${item.item_type === 'veg' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`} variant="outline">
+                            {item.item_type}
+                          </Badge>
+                          {!item.is_available && <Badge className="text-[10px] bg-muted-foreground/10 text-muted-foreground" variant="outline">Out of Stock</Badge>}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{item.description}</div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-bold text-sm">₹{item.price}</span>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItem(item); setIsItemOpen(true); }}>
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                            if (confirm('Delete this menu item?')) {
+                              deleteMenuItemMut.mutate({ id: item.id, restaurantId: restaurantId! });
+                            }
+                          }}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {(!items || items.filter((item: any) => item.category_id === selectedCat).length === 0) && (
+                  <p className="text-center text-sm text-muted-foreground py-8">No items in this category yet. Click "Add Item" to start.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* ════════════ DIALOGS ════════════ */}
+
+      {/* Printer Dialog */}
+      <Dialog open={isPrinterOpen} onOpenChange={setIsPrinterOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingPrinter?.id ? 'Edit Printer' : 'Add New Printer'}</DialogTitle>
+            <DialogDescription>Specify printer name, type, connection, and properties.</DialogDescription>
+          </DialogHeader>
+          {editingPrinter && (
+            <div className="space-y-4">
               <div className="space-y-1">
-                <Label>Type</Label>
-                <Select value={editItem?.item_type} onValueChange={v => setEditItem(f => f ? ({ ...f, item_type: v as any }) : null)}>
+                <Label>Printer Name</Label>
+                <Input value={editingPrinter.name} onChange={(e) => setEditingPrinter((p: any) => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Printer Type</Label>
+                  <Select value={editingPrinter.type} onValueChange={(val) => setEditingPrinter((p: any) => ({ ...p, type: val }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bill">Bill Printer</SelectItem>
+                      <SelectItem value="KOT">KOT Printer</SelectItem>
+                      <SelectItem value="Bar">Bar Printer</SelectItem>
+                      <SelectItem value="Label">Label Printer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Connection Type</Label>
+                  <Select value={editingPrinter.connection} onValueChange={(val) => setEditingPrinter((p: any) => ({ ...p, connection: val }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USB">USB</SelectItem>
+                      <SelectItem value="LAN">LAN (Ethernet/WiFi)</SelectItem>
+                      <SelectItem value="Bluetooth">Bluetooth</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {editingPrinter.connection === 'LAN' && (
+                <div className="space-y-1">
+                  <Label>IP Address</Label>
+                  <Input placeholder="192.168.1.100" value={editingPrinter.ipAddress} onChange={(e) => setEditingPrinter((p: any) => ({ ...p, ipAddress: e.target.value }))} />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <Label>Paper Width</Label>
+                <Select value={editingPrinter.paperWidth} onValueChange={(val) => setEditingPrinter((p: any) => ({ ...p, paperWidth: val }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="veg">🟢 Veg</SelectItem>
-                    <SelectItem value="non-veg">🔴 Non-Veg</SelectItem>
-                    <SelectItem value="egg">🟡 Egg</SelectItem>
-                    <SelectItem value="vegan">🌱 Vegan</SelectItem>
+                    <SelectItem value="80mm">80mm thermal paper</SelectItem>
+                    <SelectItem value="57mm">57mm thermal paper</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label>Default Printer</Label>
+                  <p className="text-[10px] text-muted-foreground">Make this the fallback device for its type.</p>
+                </div>
+                <Switch checked={editingPrinter.isDefault} onCheckedChange={(val) => setEditingPrinter((p: any) => ({ ...p, isDefault: val }))} />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label>Cash Drawer Connected</Label>
+                  <p className="text-[10px] text-muted-foreground">Trigger pulse signal to open drawer on print.</p>
+                </div>
+                <Switch checked={editingPrinter.hasCashDrawer} onCheckedChange={(val) => setEditingPrinter((p: any) => ({ ...p, hasCashDrawer: val }))} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPrinterOpen(false)}>Cancel</Button>
+            <Button onClick={handleSavePrinter} disabled={savePrinterMut.isPending}>
+              {savePrinterMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Printer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Dialog */}
+      <Dialog open={isCatOpen} onOpenChange={setIsCatOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editingCat?.id ? 'Edit Category' : 'Add Category'}</DialogTitle>
+            <DialogDescription>Specify the category name and properties.</DialogDescription>
+          </DialogHeader>
+          {editingCat && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Label>Category Name</Label>
+                <Input value={editingCat.name} onChange={(e) => setEditingCat((p: any) => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>Serve Type</Label>
+                <Select value={editingCat.type} onValueChange={(val) => setEditingCat((p: any) => ({ ...p, type: val }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="both">Veg & Non-Veg (Both)</SelectItem>
+                    <SelectItem value="veg">Vegetarian Only</SelectItem>
+                    <SelectItem value="non-veg">Non-Vegetarian Only</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Tax Rate (%)</Label><Input type="number" value={editItem?.tax_rate || ''} onChange={e => setEditItem(f => f ? ({ ...f, tax_rate: Number(e.target.value) }) : null)} /></div>
-              <div className="space-y-1"><Label>HSN Code</Label><Input value={editItem?.hsn_code || ''} onChange={e => setEditItem(f => f ? ({ ...f, hsn_code: e.target.value }) : null)} /></div>
-            </div>
-            <div className="space-y-1"><Label>Description</Label><Textarea value={editItem?.description || ''} onChange={e => setEditItem(f => f ? ({ ...f, description: e.target.value }) : null)} className="min-h-[60px]" /></div>
-            
-            {/* Addons Manager */}
-            <div className="space-y-2 border-t pt-3 mt-4">
-              <div className="flex items-center justify-between">
-                <Label>Customizations / Add-ons</Label>
-                <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => {
-                  setEditItem(f => f ? ({ ...f, addons: [...(f.addons || []), { id: crypto.randomUUID(), name: '', price: 0 }] }) : null);
-                }}>
-                  <Plus className="h-3 w-3 mr-1" /> Add
-                </Button>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCatOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveCategory} disabled={saveCategoryMut.isPending}>
+              {saveCategoryMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Menu Item Dialog */}
+      <Dialog open={isItemOpen} onOpenChange={setIsItemOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingItem?.id ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle>
+            <DialogDescription>Create or update a dish in this category.</DialogDescription>
+          </DialogHeader>
+          {editingItem && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Label>Item Name</Label>
+                <Input value={editingItem.name} onChange={(e) => setEditingItem((p: any) => ({ ...p, name: e.target.value }))} />
               </div>
-              {editItem?.addons?.map((addon, index) => (
-                <div key={addon.id} className="flex items-center gap-2">
-                  <Input placeholder="e.g. Extra Cheese, Spicy" value={addon.name} className="h-8 text-sm flex-1"
-                    onChange={e => setEditItem(f => {
-                      if (!f) return null;
-                      const addons = [...(f.addons || [])];
-                      addons[index].name = e.target.value;
-                      return { ...f, addons };
-                    })} 
-                  />
-                  <Input type="number" placeholder="Price" value={addon.price === 0 ? '' : addon.price} className="h-8 text-sm w-20 flex-shrink-0"
-                    onChange={e => setEditItem(f => {
-                      if (!f) return null;
-                      const addons = [...(f.addons || [])];
-                      addons[index].price = Number(e.target.value);
-                      return { ...f, addons };
-                    })} 
-                  />
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive flex-shrink-0"
-                    onClick={() => setEditItem(f => {
-                      if (!f) return null;
-                      return { ...f, addons: f.addons?.filter((_, i) => i !== index) };
-                    })}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Price (₹)</Label>
+                  <Input type="number" value={editingItem.price} onChange={(e) => setEditingItem((p: any) => ({ ...p, price: e.target.value }))} />
                 </div>
-              ))}
+                <div className="space-y-1">
+                  <Label>Diet Type</Label>
+                  <Select value={editingItem.item_type} onValueChange={(val) => setEditingItem((p: any) => ({ ...p, item_type: val }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Veg">Veg</SelectItem>
+                      <SelectItem value="Non-Veg">Non-Veg</SelectItem>
+                      <SelectItem value="Egg">Egg</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Description</Label>
+                <Input value={editingItem.description} onChange={(e) => setEditingItem((p: any) => ({ ...p, description: e.target.value }))} />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label>Available (In Stock)</Label>
+                  <p className="text-[10px] text-muted-foreground">Toggle off to mark item out of stock in POS.</p>
+                </div>
+                <Switch checked={editingItem.is_available} onCheckedChange={(val) => setEditingItem((p: any) => ({ ...p, is_available: val }))} />
+              </div>
             </div>
-          </div>
-          <DialogFooter><Button onClick={saveItem}>Save Item</Button></DialogFooter>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsItemOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveItem} disabled={saveMenuItemMut.isPending}>
+              {saveMenuItemMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Item
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function TaxSettings() {
-  const taxes = useLiveQuery(() => db.taxConfig.toArray()) || [];
-  const [editTax, setEditTax] = useState<Partial<TaxConfig> | null>(null);
-
-  const saveTax = async () => {
-    if (!editTax) return;
-    if (editTax.id) {
-      await db.taxConfig.update(editTax.id, editTax);
-    } else {
-      await db.taxConfig.add(editTax as TaxConfig);
-    }
-    setEditTax(null);
-    toast.success('Tax configuration saved');
-  };
-
-  const toggleTax = async (tax: TaxConfig) => {
-    await db.taxConfig.update(tax.id!, { is_active: !tax.is_active });
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between">
-        <div><CardTitle className="text-lg">Tax & Charge Configuration</CardTitle><CardDescription>Configure GST slabs, service charges, and other fees</CardDescription></div>
-        <Button size="sm" onClick={() => setEditTax({ name: '', rate: 0, type: 'gst', is_active: true, is_inclusive: false })} className="gap-1">
-          <Plus className="h-3.5 w-3.5" /> Add Tax
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {taxes.map(tax => (
-            <div key={tax.id} className="flex items-center justify-between px-4 py-3 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <Switch checked={tax.is_active} onCheckedChange={() => toggleTax(tax)} />
-                <div>
-                  <div className="font-medium text-sm">{tax.name}</div>
-                  <div className="text-xs text-muted-foreground">{tax.type.toUpperCase()} • {tax.rate}% • {tax.is_inclusive ? 'Inclusive' : 'Exclusive'}</div>
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setEditTax(tax)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => db.taxConfig.delete(tax.id!)}><Trash2 className="h-3.5 w-3.5" /></Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-
-      <Dialog open={!!editTax} onOpenChange={() => setEditTax(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editTax?.id ? 'Edit Tax' : 'Add Tax'}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Name</Label><Input value={editTax?.name || ''} onChange={e => setEditTax(f => f ? ({ ...f, name: e.target.value }) : null)} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Rate (%)</Label><Input type="number" step="0.5" value={editTax?.rate || ''} onChange={e => setEditTax(f => f ? ({ ...f, rate: Number(e.target.value) }) : null)} /></div>
-              <div className="space-y-1">
-                <Label>Type</Label>
-                <Select value={editTax?.type} onValueChange={v => setEditTax(f => f ? ({ ...f, type: v as any }) : null)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gst">GST</SelectItem>
-                    <SelectItem value="cgst">CGST</SelectItem>
-                    <SelectItem value="sgst">SGST</SelectItem>
-                    <SelectItem value="igst">IGST</SelectItem>
-                    <SelectItem value="service_charge">Service Charge</SelectItem>
-                    <SelectItem value="packaging">Packaging</SelectItem>
-                    <SelectItem value="delivery">Delivery</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={editTax?.is_inclusive || false} onCheckedChange={v => setEditTax(f => f ? ({ ...f, is_inclusive: v }) : null)} />
-              <Label>Tax Inclusive in Price</Label>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={saveTax}>Save</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
-
-function PaymentSettings() {
-  const methods = useLiveQuery(() => db.paymentMethods.orderBy('display_order').toArray()) || [];
-  const [editMethod, setEditMethod] = useState<Partial<PaymentMethod> | null>(null);
-
-  const saveMethod = async () => {
-    if (!editMethod) return;
-    if (editMethod.id) {
-      await db.paymentMethods.update(editMethod.id, editMethod);
-    } else {
-      await db.paymentMethods.add(editMethod as PaymentMethod);
-    }
-    setEditMethod(null);
-    toast.success('Payment method saved');
-  };
-
-  const toggleMethod = async (m: PaymentMethod) => {
-    await db.paymentMethods.update(m.id!, { is_active: !m.is_active });
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between">
-        <div><CardTitle className="text-lg">Payment Methods</CardTitle><CardDescription>Configure accepted payment methods</CardDescription></div>
-        <Button size="sm" onClick={() => setEditMethod({ name: '', type: 'cash', is_active: true, display_order: methods.length })} className="gap-1">
-          <Plus className="h-3.5 w-3.5" /> Add Method
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-2">
-          {methods.map(m => (
-            <div key={m.id} className="flex items-center justify-between px-4 py-3 rounded-lg border">
-              <div className="flex items-center gap-3">
-                <Switch checked={m.is_active} onCheckedChange={() => toggleMethod(m)} />
-                <div>
-                  <div className="font-medium text-sm">{m.name}</div>
-                  <div className="text-xs text-muted-foreground capitalize">{m.type}</div>
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setEditMethod(m)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => db.paymentMethods.delete(m.id!)}><Trash2 className="h-3.5 w-3.5" /></Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-
-      <Dialog open={!!editMethod} onOpenChange={() => setEditMethod(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editMethod?.id ? 'Edit' : 'Add'} Payment Method</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Name</Label><Input value={editMethod?.name || ''} onChange={e => setEditMethod(f => f ? ({ ...f, name: e.target.value }) : null)} /></div>
-            <div className="space-y-1">
-              <Label>Type</Label>
-              <Select value={editMethod?.type} onValueChange={v => setEditMethod(f => f ? ({ ...f, type: v as any }) : null)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="upi">UPI</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                  <SelectItem value="wallet">Digital Wallet</SelectItem>
-                  <SelectItem value="gateway">Payment Gateway</SelectItem>
-                  <SelectItem value="credit">Credit/House Account</SelectItem>
-                  <SelectItem value="complimentary">Complimentary</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={saveMethod}>Save</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
-
-function PrinterSettings() {
-  const printers = useLiveQuery(() => db.printers.toArray()) || [];
-  const [editPrinter, setEditPrinter] = useState<Partial<PrinterConfig> | null>(null);
-
-  const savePrinter = async () => {
-    if (!editPrinter) return;
-    if (editPrinter.id) {
-      await db.printers.update(editPrinter.id, editPrinter);
-    } else {
-      await db.printers.add(editPrinter as PrinterConfig);
-    }
-    setEditPrinter(null);
-    toast.success('Printer saved');
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between">
-        <div><CardTitle className="text-lg">Printer & Hardware Setup</CardTitle><CardDescription>Configure thermal printers for bills and KOTs</CardDescription></div>
-        <Button size="sm" onClick={() => setEditPrinter({ name: '', type: 'bill', connection: 'usb', paper_width: '80mm', is_default: false, is_active: true })} className="gap-1">
-          <Plus className="h-3.5 w-3.5" /> Add Printer
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {printers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Printer className="h-12 w-12 mx-auto mb-2 opacity-20" />
-            <p className="text-sm">No printers configured. Add a printer to start printing bills and KOTs.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {printers.map(p => (
-              <div key={p.id} className="flex items-center justify-between px-4 py-3 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <Printer className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium text-sm">{p.name}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{p.type} • {p.connection} • {p.paper_width}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {p.is_default && <Badge className="text-[10px]">Default</Badge>}
-                  <Switch checked={p.is_active} onCheckedChange={async () => { await db.printers.update(p.id!, { is_active: !p.is_active }); }} />
-                  <Button variant="ghost" size="sm" onClick={() => setEditPrinter(p)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={!!editPrinter} onOpenChange={() => setEditPrinter(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editPrinter?.id ? 'Edit' : 'Add'} Printer</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1"><Label>Printer Name</Label><Input value={editPrinter?.name || ''} onChange={e => setEditPrinter(f => f ? ({ ...f, name: e.target.value }) : null)} placeholder="e.g. Kitchen Printer 1" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Printer Type</Label>
-                <Select value={editPrinter?.type} onValueChange={v => setEditPrinter(f => f ? ({ ...f, type: v as any }) : null)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bill">Bill Printer</SelectItem>
-                    <SelectItem value="kot">KOT (Kitchen)</SelectItem>
-                    <SelectItem value="bar">Bar Printer</SelectItem>
-                    <SelectItem value="label">Label Printer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Connection</Label>
-                <Select value={editPrinter?.connection} onValueChange={v => setEditPrinter(f => f ? ({ ...f, connection: v as any }) : null)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="usb">USB</SelectItem>
-                    <SelectItem value="lan">Network (LAN)</SelectItem>
-                    <SelectItem value="bluetooth">Bluetooth</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Paper Width</Label>
-                <Select value={editPrinter?.paper_width} onValueChange={v => setEditPrinter(f => f ? ({ ...f, paper_width: v as any }) : null)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="57mm">57mm</SelectItem>
-                    <SelectItem value="80mm">80mm</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {editPrinter?.connection === 'lan' && (
-                <div className="space-y-1"><Label>IP Address</Label><Input value={editPrinter?.ip_address || ''} onChange={e => setEditPrinter(f => f ? ({ ...f, ip_address: e.target.value }) : null)} placeholder="192.168.1.100" /></div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={editPrinter?.is_default || false} onCheckedChange={v => setEditPrinter(f => f ? ({ ...f, is_default: v }) : null)} />
-              <Label>Set as Default Printer</Label>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={savePrinter}>Save Printer</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
   );
 }

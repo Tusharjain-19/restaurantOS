@@ -1,10 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.warn('Missing Supabase environment variables - Super Admin functions will limited.');
-}
-
-export const supabase = createClient(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_KEY || 'placeholder');
+// Re-export the canonical client used across the app.
+// The auto-generated client lives in src/integrations/supabase/client.ts.
+export { supabase } from '@/integrations/supabase/client';

@@ -1,318 +1,424 @@
-import { useState, useMemo } from 'react';
-import { BarChart3, TrendingUp, Download, Calendar, IndianRupee, ShoppingCart, Users, Package, Clock, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { Download, TrendingUp, TrendingDown, IndianRupee, ShoppingCart, Users, Grid3X3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { db } from '@/lib/db';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { toast } from 'sonner';
-import { exportReportsToExcel } from '@/lib/export';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
+import { cn } from '@/lib/utils';
 
-const CHART_COLORS = ['hsl(215, 60%, 50%)', 'hsl(24, 90%, 50%)', 'hsl(150, 60%, 40%)', 'hsl(280, 60%, 55%)', 'hsl(45, 93%, 52%)', 'hsl(0, 70%, 50%)'];
+const REVENUE_DATA = [
+  { time: '10AM', current: 2400, previous: 1800 },
+  { time: '11AM', current: 4200, previous: 3600 },
+  { time: '12PM', current: 8900, previous: 7200 },
+  { time: '1PM', current: 15600, previous: 12800 },
+  { time: '2PM', current: 18200, previous: 15400 },
+  { time: '3PM', current: 19800, previous: 16200 },
+  { time: '4PM', current: 20400, previous: 17000 },
+  { time: '5PM', current: 21200, previous: 17800 },
+  { time: '6PM', current: 24600, previous: 20400 },
+  { time: '7PM', current: 31200, previous: 26800 },
+  { time: '8PM', current: 38400, previous: 32400 },
+  { time: '9PM', current: 42800, previous: 36200 },
+];
+
+const ORDER_SPLIT = [
+  { name: 'Dine-In', value: 58, color: 'hsl(215, 60%, 27%)' },
+  { name: 'Takeaway', value: 28, color: 'hsl(24, 90%, 44%)' },
+  { name: 'Delivery', value: 14, color: 'hsl(150, 60%, 27%)' },
+];
+
+const TOP_ITEMS = [
+  { name: 'Butter Chicken', qty: 42, revenue: 13440, type: 'non-veg' },
+  { name: 'Paneer Tikka', qty: 38, revenue: 10640, type: 'veg' },
+  { name: 'Chicken Biryani', qty: 35, revenue: 10500, type: 'non-veg' },
+  { name: 'Dal Tadka', qty: 30, revenue: 5400, type: 'veg' },
+  { name: 'Butter Naan', qty: 120, revenue: 7200, type: 'veg' },
+  { name: 'Paneer Butter Masala', qty: 28, revenue: 7840, type: 'veg' },
+  { name: 'Masala Chai', qty: 85, revenue: 3400, type: 'veg' },
+  { name: 'Mutton Rogan Josh', qty: 18, revenue: 7560, type: 'non-veg' },
+  { name: 'Gulab Jamun', qty: 45, revenue: 3600, type: 'veg' },
+  { name: 'Fresh Lime Soda', qty: 52, revenue: 3120, type: 'veg' },
+];
+
+const PAYMENT_DATA = [
+  { method: 'Cash', amount: 18500 },
+  { method: 'UPI', amount: 14200 },
+  { method: 'Card', amount: 7800 },
+  { method: 'Other', amount: 2300 },
+];
+
+const STAFF_DATA = [
+  { name: 'Raj', orders: 28, items: 86, avg_bill: 580, voids: 1, revenue: 16240 },
+  { name: 'Priya', orders: 22, items: 64, avg_bill: 620, voids: 0, revenue: 13640 },
+  { name: 'Amit', orders: 18, items: 52, avg_bill: 540, voids: 2, revenue: 9720 },
+  { name: 'Sunita', orders: 15, items: 44, avg_bill: 490, voids: 0, revenue: 7350 },
+];
+
+const TAX_DATA = [
+  { rate: '5%', taxable: 38200, cgst: 955, sgst: 955, total: 1910 },
+  { rate: '12%', taxable: 0, cgst: 0, sgst: 0, total: 0 },
+  { rate: '18%', taxable: 4500, cgst: 405, sgst: 405, total: 810 },
+];
 
 export default function Reports() {
-  const [tab, setTab] = useState('daily');
-  const [period, setPeriod] = useState('today'); // today, yesterday, this_month, this_year, all_time
-  const [dateRange, setDateRange] = useState({
-    from: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0],
-  });
-
-  const orders = useLiveQuery(() => db.orders.toArray()) || [];
-  const bills = useLiveQuery(() => db.bills.toArray()) || [];
-  const items = useLiveQuery(() => db.orderItems.toArray()) || [];
-  const ingredients = useLiveQuery(() => db.ingredients.toArray()) || [];
-  const menuItems = useLiveQuery(() => db.menuItems.toArray()) || [];
-  const categories = useLiveQuery(() => db.menuCategories.toArray()) || [];
-
-  const paidOrders = useMemo(() => orders.filter(o => o.status === 'paid'), [orders]);
-
-  const periodOrders = useMemo(() => {
-    const now = new Date();
-    return paidOrders.filter(o => {
-      const d = new Date(o.created_at);
-      if (period === 'today') return d.toDateString() === now.toDateString();
-      if (period === 'yesterday') {
-        const y = new Date(now);
-        y.setDate(y.getDate() - 1);
-        return d.toDateString() === y.toDateString();
-      }
-      if (period === 'this_month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      if (period === 'this_year') return d.getFullYear() === now.getFullYear();
-      return true; // all_time
-    });
-  }, [paidOrders, period]);
-
-  const periodRevenue = periodOrders.reduce((s, o) => s + o.total, 0);
-  const periodOrderCount = periodOrders.length;
-  const avgOrderValue = periodOrderCount > 0 ? Math.round(periodRevenue / periodOrderCount) : 0;
-
-  // Last 7 days revenue
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const dStr = d.toDateString();
-    const dayOrders = paidOrders.filter(o => new Date(o.created_at).toDateString() === dStr);
-    return {
-      date: d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' }),
-      revenue: dayOrders.reduce((s, o) => s + o.total, 0),
-      orders: dayOrders.length,
-    };
-  });
-
-  // Revenue by order type
-  const orderTypeRevenue = [
-    { name: 'Dine-In', value: paidOrders.filter(o => o.order_type === 'dine_in').reduce((s, o) => s + o.total, 0) },
-    { name: 'Takeaway', value: paidOrders.filter(o => o.order_type === 'takeaway').reduce((s, o) => s + o.total, 0) },
-    { name: 'Delivery', value: paidOrders.filter(o => o.order_type === 'delivery').reduce((s, o) => s + o.total, 0) },
-  ].filter(d => d.value > 0);
-
-  // Payment method split
-  const paymentSplit = paidOrders.reduce((acc, o) => {
-    const method = o.payment_method || 'Cash';
-    acc[method] = (acc[method] || 0) + o.total;
-    return acc;
-  }, {} as Record<string, number>);
-  const paymentData = Object.entries(paymentSplit).map(([name, value]) => ({ name, value }));
-
-  // Hourly distribution (only makes sense for today/yesterday, but we'll show it for periodOrders)
-  const hourlyData = Array.from({ length: 14 }, (_, i) => {
-    const hour = i + 8;
-    const hourOrders = periodOrders.filter(o => new Date(o.created_at).getHours() === hour);
-    return { hour: `${hour > 12 ? hour - 12 : hour}${hour >= 12 ? 'PM' : 'AM'}`, orders: hourOrders.length, revenue: hourOrders.reduce((s, o) => s + o.total, 0) };
-  });
-
-  // Inventory value by category
-  const inventoryByCategory = [...new Set(ingredients.map(i => i.category))].map(cat => ({
-    name: cat.charAt(0).toUpperCase() + cat.slice(1),
-    value: ingredients.filter(i => i.category === cat).reduce((s, i) => s + i.current_stock * i.cost_per_unit, 0),
-  }));
-
-  const totalInventoryValue = ingredients.reduce((s, i) => s + i.current_stock * i.cost_per_unit, 0);
-  const totalRevenue = paidOrders.reduce((s, o) => s + o.total, 0);
-  const totalOrders = paidOrders.length;
-
-  const exportXLSX = () => {
-    const reportsData = {
-      'Sales_Summary': paidOrders.map(o => ({
-        'Order Number': o.order_number,
-        'Date': new Date(o.created_at).toLocaleDateString(),
-        'Type': o.order_type,
-        'Customer': o.customer_name || 'Walk-in',
-        'Subtotal': o.subtotal,
-        'Tax': o.tax_amount,
-        'Total': o.total,
-        'Payment': o.payment_method,
-        'Status': o.status
-      })),
-      'Inventory_Status': ingredients.map(i => ({
-        'Item Name': i.name,
-        'Category': i.category,
-        'Current Stock': i.current_stock,
-        'Unit': i.unit,
-        'Min Level': i.min_level,
-        'Status': i.status,
-        'Value': i.current_stock * i.cost_per_unit
-      }))
-    };
-
-    exportReportsToExcel(reportsData, `restaurant_report_${new Date().toISOString().split('T')[0]}`);
-    toast.success('Excel Report exported');
-  };
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [dateRange, setDateRange] = useState('today');
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
-          <p className="text-sm text-muted-foreground">Comprehensive business insights</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[140px] h-9">
-              <SelectValue placeholder="Select Period" />
-            </SelectTrigger>
+        <h1 className="text-2xl font-bold text-foreground">Reports & Analytics</h1>
+        <div className="flex items-center gap-2">
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="yesterday">Yesterday</SelectItem>
-              <SelectItem value="this_month">This Month</SelectItem>
-              <SelectItem value="this_year">This Year</SelectItem>
-              <SelectItem value="all_time">All Time</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="last_week">Last Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-1.5 h-9" onClick={exportXLSX}>
-            <Download className="h-4 w-4" /> Export Excel
-          </Button>
+          <Button size="sm" variant="outline" className="text-xs"><Download className="h-3.5 w-3.5 mr-1" /> Export</Button>
         </div>
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-4 gap-3">
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground capitalize">{period.replace('_', ' ')} Revenue</p><p className="text-2xl font-bold text-foreground">₹{periodRevenue.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground capitalize">{period.replace('_', ' ')} Orders</p><p className="text-2xl font-bold text-foreground">{periodOrderCount}</p></CardContent></Card>
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Avg Order Value</p><p className="text-2xl font-bold text-foreground">₹{avgOrderValue}</p></CardContent></Card>
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Inventory Value</p><p className="text-2xl font-bold text-foreground">₹{totalInventoryValue.toLocaleString()}</p></CardContent></Card>
-      </div>
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-4 w-auto">
-          <TabsTrigger value="daily" className="text-xs gap-1"><BarChart3 className="h-3.5 w-3.5" />Revenue</TabsTrigger>
-          <TabsTrigger value="orders" className="text-xs gap-1"><ShoppingCart className="h-3.5 w-3.5" />Orders</TabsTrigger>
-          <TabsTrigger value="inventory" className="text-xs gap-1"><Package className="h-3.5 w-3.5" />Inventory</TabsTrigger>
-          <TabsTrigger value="summary" className="text-xs gap-1"><FileText className="h-3.5 w-3.5" />Summary</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="sales">Sales</TabsTrigger>
+          <TabsTrigger value="items">Items</TabsTrigger>
+          <TabsTrigger value="staff">Staff</TabsTrigger>
+          <TabsTrigger value="tax">Tax</TabsTrigger>
+          <TabsTrigger value="eod">EOD</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="daily">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">7-Day Revenue Trend</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={last7Days}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(val: number) => [`₹${val.toLocaleString()}`, 'Revenue']} />
-                    <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} strokeWidth={2.5} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Order Type</CardTitle></CardHeader>
-              <CardContent className="flex items-center justify-center">
-                {orderTypeRevenue.length > 0 ? (
-                  <div className="flex items-center gap-6">
-                    <ResponsiveContainer width={160} height={160}>
-                      <PieChart>
-                        <Pie data={orderTypeRevenue} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" stroke="none">
-                          {orderTypeRevenue.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
-                        </Pie>
-                        <Tooltip formatter={(val: number) => [`₹${val.toLocaleString()}`]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="space-y-2">
-                      {orderTypeRevenue.map((d, i) => (
-                        <div key={d.name} className="flex items-center gap-2 text-sm">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                          <span className="text-foreground">{d.name}</span>
-                          <span className="font-bold text-foreground">₹{d.value.toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : <p className="text-muted-foreground py-8">No data yet</p>}
-              </CardContent>
-            </Card>
+        {/* DASHBOARD */}
+        <TabsContent value="dashboard" className="space-y-4">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-4 gap-3">
+            <KPICard title="Today's Revenue" value="₹42,800" change={18.2} icon={IndianRupee} />
+            <KPICard title="Today's Orders" value="83" change={12.5} icon={ShoppingCart} />
+            <KPICard title="Avg Bill Value" value="₹516" change={-3.2} icon={TrendingUp} />
+            <KPICard title="Active Tables" value="4/15" change={0} icon={Grid3X3} />
           </div>
-        </TabsContent>
 
-        <TabsContent value="orders">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Orders by Hour (Today)</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={hourlyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Methods</CardTitle></CardHeader>
-              <CardContent className="flex items-center justify-center">
-                {paymentData.length > 0 ? (
-                  <div className="flex items-center gap-6">
-                    <ResponsiveContainer width={160} height={160}>
-                      <PieChart>
-                        <Pie data={paymentData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" stroke="none">
-                          {paymentData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
-                        </Pie>
-                        <Tooltip formatter={(val: number) => [`₹${val.toLocaleString()}`]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="space-y-2">
-                      {paymentData.map((d, i) => (
-                        <div key={d.name} className="flex items-center gap-2 text-sm">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
-                          <span className="text-foreground">{d.name}</span>
-                          <span className="font-bold">₹{d.value.toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : <p className="text-muted-foreground py-8">No data</p>}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="inventory">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Inventory Value by Category</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={inventoryByCategory} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
-                    <Tooltip formatter={(val: number) => [`₹${val.toLocaleString()}`, 'Value']} />
-                    <Bar dataKey="value" fill="hsl(24, 90%, 50%)" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Stock Status Summary</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {['normal', 'low', 'out'].map(status => {
-                    const count = ingredients.filter(i => i.status === status).length;
-                    const total = ingredients.length;
-                    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                    return (
-                      <div key={status} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="capitalize font-medium text-foreground">{status === 'out' ? 'Out of Stock' : status === 'low' ? 'Low Stock' : 'Normal'}</span>
-                          <span className="font-bold">{count} ({pct}%)</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                          <div className={`h-full rounded-full ${status === 'normal' ? 'bg-success' : status === 'low' ? 'bg-warning' : 'bg-destructive'}`} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="summary">
+          {/* Revenue Chart */}
           <Card>
-            <CardHeader><CardTitle className="text-sm">Business Summary</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue Trend</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Total Lifetime Revenue</p><p className="text-2xl font-bold text-foreground">₹{totalRevenue.toLocaleString()}</p></div>
-                <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Total Orders</p><p className="text-2xl font-bold text-foreground">{totalOrders}</p></div>
-                <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Avg Order Value</p><p className="text-2xl font-bold text-foreground">₹{totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0}</p></div>
-                <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Menu Items</p><p className="text-2xl font-bold text-foreground">{menuItems.length}</p></div>
-                <div className="rounded-lg bg-muted p-4"><p className="text-xs text-muted-foreground">Categories</p><p className="text-2xl font-bold text-foreground">{categories.length}</p></div>
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={REVENUE_DATA}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: number) => [`₹${v.toLocaleString()}`, '']} />
+                  <Area type="monotone" dataKey="current" stroke="hsl(215, 60%, 27%)" fill="hsl(215, 60%, 27%)" fillOpacity={0.15} name="Today" />
+                  <Area type="monotone" dataKey="previous" stroke="hsl(var(--muted-foreground))" fill="transparent" strokeDasharray="4 4" name="Yesterday" />
+                  <Legend />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-3 gap-3">
+            {/* Order Split */}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Order Breakdown</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie data={ORDER_SPLIT} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" label={({ name, value }) => `${name} ${value}%`}>
+                      {ORDER_SPLIT.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Top Items */}
+            <Card className="col-span-2">
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Top 10 Items</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={TOP_ITEMS} layout="vertical">
+                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip formatter={(v: number) => [`${v}`, 'Qty']} />
+                    <Bar dataKey="qty" fill="hsl(215, 60%, 27%)" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Payment Methods */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Methods</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={PAYMENT_DATA}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="method" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: number) => [`₹${v.toLocaleString()}`, 'Amount']} />
+                  <Bar dataKey="amount" fill="hsl(24, 90%, 44%)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* SALES */}
+        <TabsContent value="sales" className="space-y-3">
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Bill #</TableHead>
+                  <TableHead>Table</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead className="text-right">Subtotal</TableHead>
+                  <TableHead className="text-right">Tax</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Payment</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[
+                  { date: '09 Apr', bill: '083', table: 'T5', items: 6, subtotal: 1340, tax: 67, total: 1407, payment: 'Cash' },
+                  { date: '09 Apr', bill: '082', table: 'T2', items: 4, subtotal: 860, tax: 43, total: 903, payment: 'UPI' },
+                  { date: '09 Apr', bill: '081', table: 'TKW', items: 3, subtotal: 620, tax: 31, total: 651, payment: 'Cash' },
+                  { date: '09 Apr', bill: '080', table: 'T13', items: 8, subtotal: 1890, tax: 95, total: 1985, payment: 'Card' },
+                  { date: '09 Apr', bill: '079', table: 'T10', items: 5, subtotal: 560, tax: 28, total: 588, payment: 'UPI' },
+                ].map((row, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-muted-foreground">{row.date}</TableCell>
+                    <TableCell className="font-medium">#{row.bill}</TableCell>
+                    <TableCell>{row.table}</TableCell>
+                    <TableCell>{row.items}</TableCell>
+                    <TableCell className="text-right">₹{row.subtotal}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">₹{row.tax}</TableCell>
+                    <TableCell className="text-right font-bold">₹{row.total}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px]">{row.payment}</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* ITEMS */}
+        <TabsContent value="items" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Menu Item Performance</CardTitle></CardHeader>
+            <CardContent>
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Orders</TableHead>
+                      <TableHead className="text-right">Revenue</TableHead>
+                      <TableHead className="text-right">Food Cost</TableHead>
+                      <TableHead className="text-right">Margin %</TableHead>
+                      <TableHead>Rating</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {TOP_ITEMS.map((item, i) => {
+                      const margin = Math.round(60 + Math.random() * 20);
+                      return (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>
+                            <span className={cn("h-2.5 w-2.5 rounded-full inline-block mr-1", item.type === 'veg' ? "bg-green-600" : "bg-red-600")} />
+                          </TableCell>
+                          <TableCell className="text-right">{item.qty}</TableCell>
+                          <TableCell className="text-right">₹{item.revenue.toLocaleString()}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">₹{Math.round(item.revenue * (100 - margin) / 100).toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={cn("font-bold", margin >= 70 ? "text-success" : margin >= 60 ? "text-warning" : "text-destructive")}>{margin}%</span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={cn("text-[9px]",
+                              margin >= 70 && item.qty >= 30 ? "text-success border-success" :
+                              margin >= 70 ? "text-primary border-primary" :
+                              item.qty >= 30 ? "text-warning border-warning" : "text-muted-foreground"
+                            )}>
+                              {margin >= 70 && item.qty >= 30 ? '★ Star' :
+                               margin >= 70 ? 'Plowhorse' :
+                               item.qty >= 30 ? 'Puzzle' : 'Dog'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* STAFF */}
+        <TabsContent value="staff" className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Staff</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={STAFF_DATA}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => [`₹${v.toLocaleString()}`, '']} />
+                    <Bar dataKey="revenue" fill="hsl(215, 60%, 27%)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Waiter</TableHead>
+                    <TableHead className="text-right">Orders</TableHead>
+                    <TableHead className="text-right">Items</TableHead>
+                    <TableHead className="text-right">Avg Bill</TableHead>
+                    <TableHead className="text-right">Voids</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {STAFF_DATA.map(s => (
+                    <TableRow key={s.name}>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="text-right">{s.orders}</TableCell>
+                      <TableCell className="text-right">{s.items}</TableCell>
+                      <TableCell className="text-right">₹{s.avg_bill}</TableCell>
+                      <TableCell className="text-right">{s.voids > 0 ? <span className="text-destructive">{s.voids}</span> : '0'}</TableCell>
+                      <TableCell className="text-right font-bold">₹{s.revenue.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* TAX */}
+        <TabsContent value="tax" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">GST Summary — {dateRange === 'today' ? 'Today' : 'This Period'}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tax Rate</TableHead>
+                      <TableHead className="text-right">Taxable Amount</TableHead>
+                      <TableHead className="text-right">CGST</TableHead>
+                      <TableHead className="text-right">SGST</TableHead>
+                      <TableHead className="text-right">Total Tax</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {TAX_DATA.map(t => (
+                      <TableRow key={t.rate}>
+                        <TableCell className="font-medium">{t.rate}</TableCell>
+                        <TableCell className="text-right">₹{t.taxable.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₹{t.cgst.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₹{t.sgst.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">₹{t.total.toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="font-bold bg-muted/50">
+                      <TableCell>TOTAL</TableCell>
+                      <TableCell className="text-right">₹{TAX_DATA.reduce((s, t) => s + t.taxable, 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">₹{TAX_DATA.reduce((s, t) => s + t.cgst, 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">₹{TAX_DATA.reduce((s, t) => s + t.sgst, 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">₹{TAX_DATA.reduce((s, t) => s + t.total, 0).toLocaleString()}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" variant="outline" className="text-xs"><Download className="h-3.5 w-3.5 mr-1" /> Export Excel</Button>
+                <Button size="sm" variant="outline" className="text-xs">GSTR-1 Format</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* EOD */}
+        <TabsContent value="eod" className="space-y-3">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">End of Day Report — 09 April 2026</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-4 gap-3 text-sm">
+                <div className="p-3 rounded-lg bg-muted"><div className="text-muted-foreground text-xs">Opening</div><div className="font-bold">10:00 AM</div></div>
+                <div className="p-3 rounded-lg bg-muted"><div className="text-muted-foreground text-xs">Closing</div><div className="font-bold">11:00 PM</div></div>
+                <div className="p-3 rounded-lg bg-muted"><div className="text-muted-foreground text-xs">Total Hours</div><div className="font-bold">13h</div></div>
+                <div className="p-3 rounded-lg bg-muted"><div className="text-muted-foreground text-xs">Total Covers</div><div className="font-bold">142</div></div>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20"><div className="text-xs text-muted-foreground">Total Revenue</div><div className="text-xl font-bold text-primary">₹42,800</div></div>
+                <div className="p-3 rounded-lg bg-muted"><div className="text-xs text-muted-foreground">Total Orders</div><div className="text-xl font-bold text-foreground">83</div></div>
+                <div className="p-3 rounded-lg bg-muted"><div className="text-xs text-muted-foreground">Cash in Hand</div><div className="text-xl font-bold text-foreground">₹18,500</div></div>
+              </div>
+              <Separator />
+              <div className="text-sm"><h4 className="font-semibold mb-2 text-foreground">Payment Summary</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {PAYMENT_DATA.map(p => (
+                    <div key={p.method} className="p-2 rounded bg-muted text-center">
+                      <div className="text-xs text-muted-foreground">{p.method}</div>
+                      <div className="font-bold text-foreground">₹{p.amount.toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm"><Download className="h-3.5 w-3.5 mr-1" /> Print EOD Report</Button>
+                <Button size="sm" variant="destructive">Close Day / Start New Shift</Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function KPICard({ title, value, change, icon: Icon }: {
+  title: string; value: string; change: number; icon: React.ElementType;
+}) {
+  const isUp = change > 0;
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-muted-foreground">{title}</span>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="text-2xl font-bold text-foreground">{value}</div>
+        {change !== 0 && (
+          <div className={cn("flex items-center gap-1 text-xs mt-1", isUp ? "text-success" : "text-destructive")}>
+            {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {Math.abs(change)}% vs yesterday
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
