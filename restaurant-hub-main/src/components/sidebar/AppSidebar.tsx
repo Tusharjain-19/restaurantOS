@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Grid3X3, ChefHat, Receipt,
-  Package, BarChart3, Users, Truck, Settings, UserCircle
+  Package, BarChart3, Users, Settings, UserCircle
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
@@ -21,7 +21,7 @@ const navItems = [
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Customers', url: '/customers', icon: UserCircle },
   { title: 'Staff', url: '/staff', icon: Users },
-  { title: 'Delivery', url: '/delivery', icon: Truck },
+
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 

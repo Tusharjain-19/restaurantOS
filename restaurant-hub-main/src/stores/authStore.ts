@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
-export type UserRole = 'admin' | 'manager' | 'captain' | 'cashier' | 'kitchen' | 'delivery';
+export type UserRole = 'admin' | 'manager' | 'captain' | 'cashier' | 'kitchen';
 
 export interface UserProfile {
   id: string;

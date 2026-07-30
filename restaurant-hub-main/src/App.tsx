@@ -5,7 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { WaiterProtectedRoute } from "@/components/auth/WaiterProtectedRoute";
+
 import { KitchenProtectedRoute } from "@/components/auth/KitchenProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import AppLayout from "@/layouts/AppLayout";
@@ -23,20 +23,11 @@ const Billing = lazy(() => import("@/pages/Billing"));
 const Inventory = lazy(() => import("@/pages/Inventory"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Staff = lazy(() => import("@/pages/Staff"));
-const Delivery = lazy(() => import("@/pages/Delivery"));
 const SettingsPage = lazy(() => import("@/pages/Settings"));
 const Customers = lazy(() => import("@/pages/Customers"));
 const CustomerProfile = lazy(() => import("@/pages/CustomerProfile"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const SuperAdmin = lazy(() => import("@/pages/SuperAdmin"));
-
-const WaiterLayout = lazy(() => import("@/layouts/WaiterLayout"));
-const WaiterLogin = lazy(() => import("@/pages/waiter/Login"));
-const WaiterHome = lazy(() => import("@/pages/waiter/Home"));
-const WaiterOrder = lazy(() => import("@/pages/waiter/Order"));
-const WaiterMyOrders = lazy(() => import("@/pages/waiter/MyOrders"));
-const WaiterAlerts = lazy(() => import("@/pages/waiter/Alerts"));
-const WaiterProfile = lazy(() => import("@/pages/waiter/Profile"));
 
 const KitchenLogin = lazy(() => import("@/pages/kitchen/Login"));
 
@@ -81,22 +72,9 @@ const App = () => (
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="staff" element={<Staff />} />
-                <Route path="delivery" element={<Delivery />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="customers/:id" element={<CustomerProfile />} />
                 <Route path="settings" element={<SettingsPage />} />
-              </Route>
-
-              <Route path="/waiter/login" element={<WaiterLogin />} />
-              <Route path="/waiter" element={
-                <WaiterProtectedRoute><WaiterLayout /></WaiterProtectedRoute>
-              }>
-                <Route index element={<Navigate to="/waiter/home" replace />} />
-                <Route path="home" element={<WaiterHome />} />
-                <Route path="order/:orderId" element={<WaiterOrder />} />
-                <Route path="my-orders" element={<WaiterMyOrders />} />
-                <Route path="alerts" element={<WaiterAlerts />} />
-                <Route path="profile" element={<WaiterProfile />} />
               </Route>
 
               <Route path="/kitchen/login" element={<KitchenLogin />} />

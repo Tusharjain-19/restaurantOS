@@ -50,7 +50,6 @@ const ROLE_ACCESS: Record<UserRole, string[]> = {
   captain: ['/pos', '/tables'],
   cashier: ['/pos', '/billing', '/customers'],
   kitchen: ['/kitchen'],
-  delivery: ['/delivery'],
 };
 
 export function hasAccess(role: UserRole | null, path: string): boolean {
